@@ -27,7 +27,7 @@ Use the same Unity version as the project creator.
 
 Main project files are inside:
 
-Assets/_Project/
+Assets/_Scenes/
 
 ## Current Prototype Scope
 
