@@ -47,6 +47,32 @@ public class VRControllerGrab : MonoBehaviour
 
     public VRGrabbable HeldObject => heldObject;
 
+    private void Start()
+    {
+        // Check if there is a collider on this GameObject
+        Collider col = GetComponent<Collider>();
+        if (col == null)
+        {
+            Debug.LogWarning($"[VR Grab] {gameObject.name} is missing a Collider component! Grabbing will not work. Please add a SphereCollider (with 'Is Trigger' checked) to the {gameObject.name} GameObject itself.", this);
+        }
+        else if (!col.isTrigger)
+        {
+            Debug.LogWarning($"[VR Grab] {gameObject.name}'s Collider is not set to a Trigger! Please check 'Is Trigger' in the Inspector.", this);
+        }
+
+        // Automatically add a Kinematic Rigidbody to the controller to make trigger overlaps 100% reliable
+        if (GetComponent<Rigidbody>() == null)
+        {
+            Rigidbody rb = gameObject.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            if (debugLogging)
+            {
+                Debug.Log($"[VR Grab] Automatically added a Kinematic Rigidbody to {gameObject.name} to ensure trigger overlaps are detected.");
+            }
+        }
+    }
+
     private void OnEnable()
     {
         if (grabAction.action != null)

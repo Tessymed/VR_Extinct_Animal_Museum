@@ -53,6 +53,14 @@ public class VRGrabbable : MonoBehaviour
         CacheOriginalPhysicsState();
     }
 
+    private void Start()
+    {
+        if (GetComponent<Collider>() == null && GetComponentInChildren<Collider>() == null)
+        {
+            Debug.LogWarning($"[VR Grab] {gameObject.name} has VRGrabbable but is missing a Collider component! Please add a BoxCollider, SphereCollider, or MeshCollider to this GameObject so it can be grabbed.", this);
+        }
+    }
+
     private void CacheOriginalPhysicsState()
     {
         if (rb != null)
@@ -114,10 +122,7 @@ public class VRGrabbable : MonoBehaviour
         if (currentGrabber == null) return;
 
         // Restore parenting
-        if (grabType == GrabType.Parenting)
-        {
-            transform.SetParent(originalParent);
-        }
+        transform.SetParent(originalParent);
 
         // Restore physics properties
         if (rb != null)
