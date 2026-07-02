@@ -62,10 +62,12 @@ public class Teleport_now : MonoBehaviour
     private bool wasTeleportActive;
     private Vector3 targetPosition;
     private bool isValidTargetHit;
+    private Vector3[] pointsBuffer;
 
     private void Awake()
     {
         lineRenderer = GetComponent<LineRenderer>();
+        pointsBuffer = new Vector3[curveResolution];
         
         // Setup default LineRenderer settings if not configured
         lineRenderer.positionCount = 2;
@@ -145,17 +147,15 @@ public class Teleport_now : MonoBehaviour
         // Try reading from the Input Action
         if (teleportAction.action != null && teleportAction.action.bindings.Count > 0)
         {
-            // If the action is a Vector2 (like a joystick), check if pushed forward
-            if (teleportAction.action.activeControl is InputControl<Vector2> vectorControl)
+            var value = teleportAction.action.ReadValueAsObject();
+            if (value is Vector2 vectorVal)
             {
-                return vectorControl.ReadValue().y > 0.5f;
+                return vectorVal.y > 0.5f;
             }
-            // If the action is a float (like a trigger button), check if pressed past threshold
-            if (teleportAction.action.activeControl is InputControl<float> floatControl)
+            if (value is float floatVal)
             {
-                return floatControl.ReadValue() > 0.5f;
+                return floatVal > 0.5f;
             }
-            // Fallback for binary button action
             return teleportAction.action.IsPressed();
         }
 
@@ -260,14 +260,18 @@ public class Teleport_now : MonoBehaviour
         lineRenderer.enabled = true;
         isValidTargetHit = false;
 
-        Vector3[] points = new Vector3[curveResolution];
+        // Ensure points buffer is valid and correct size
+        if (pointsBuffer == null || pointsBuffer.Length != curveResolution)
+        {
+            pointsBuffer = new Vector3[curveResolution];
+        }
         int pointsCount = 0;
 
         Vector3 startPosition = transform.position + transform.forward * 0.15f;
         Vector3 velocity = transform.forward * launchSpeed;
         Vector3 gravity = Physics.gravity * gravityScale;
 
-        points[0] = startPosition;
+        pointsBuffer[0] = startPosition;
         pointsCount = 1;
 
         Vector3 currentPosition = startPosition;
@@ -288,7 +292,7 @@ public class Teleport_now : MonoBehaviour
             if (Physics.Raycast(currentPosition, segmentDirection, out hit, segmentDistance, groundLayers, QueryTriggerInteraction.Ignore))
             {
                 hasHit = true;
-                points[i] = hit.point;
+                pointsBuffer[i] = hit.point;
                 pointsCount = i + 1;
 
                 // Validate hit point
@@ -321,7 +325,7 @@ public class Teleport_now : MonoBehaviour
             }
 
             currentPosition = nextPosition;
-            points[i] = currentPosition;
+            pointsBuffer[i] = currentPosition;
             pointsCount = i + 1;
         }
 
@@ -338,7 +342,7 @@ public class Teleport_now : MonoBehaviour
         lineRenderer.positionCount = pointsCount;
         for (int i = 0; i < pointsCount; i++)
         {
-            lineRenderer.SetPosition(i, points[i]);
+            lineRenderer.SetPosition(i, pointsBuffer[i]);
         }
     }
 

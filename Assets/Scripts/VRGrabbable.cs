@@ -45,6 +45,7 @@ public class VRGrabbable : MonoBehaviour
     public Rigidbody Rigidbody => rb;
     public bool IsGrabbed => currentGrabber != null;
     public VRControllerGrab CurrentGrabber => currentGrabber;
+    public Transform OriginalParent => originalParent;
 
     private void Awake()
     {
@@ -85,9 +86,6 @@ public class VRGrabbable : MonoBehaviour
 
         currentGrabber = grabber;
 
-        // Cache physics state in case it changed since awake
-        CacheOriginalPhysicsState();
-
         if (grabType == GrabType.Parenting)
         {
             if (isKinematicWhileHeld && rb != null)
@@ -104,9 +102,9 @@ public class VRGrabbable : MonoBehaviour
             // Position object correctly before creating joint
             AlignToGrabber(grabber.transform);
 
-            if (isKinematicWhileHeld && rb != null)
+            if (rb != null)
             {
-                rb.isKinematic = true;
+                rb.isKinematic = false;
                 rb.useGravity = false;
             }
         }
@@ -133,8 +131,11 @@ public class VRGrabbable : MonoBehaviour
             rb.angularDamping = originalAngularDrag;
 
             // Apply throwing velocities
-            rb.linearVelocity = linearVelocity * throwVelocityMultiplier;
-            rb.angularVelocity = angularVelocity * throwAngularVelocityMultiplier;
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = linearVelocity * throwVelocityMultiplier;
+                rb.angularVelocity = angularVelocity * throwAngularVelocityMultiplier;
+            }
         }
 
         var releasedGrabber = currentGrabber;

@@ -27,6 +27,28 @@ public class VRControllerGrab : MonoBehaviour
     [Tooltip("Haptic feedback duration when grabbing an object.")]
     public float grabHapticDuration = 0.1f;
 
+    [Header("Distance Grab Settings")]
+    [Tooltip("Enable raycast-based distance grabbing.")]
+    public bool enableDistanceGrab = true;
+
+    [Tooltip("Maximum distance to grab objects from.")]
+    public float distanceGrabRange = 15f;
+
+    [Tooltip("Layer mask for grabbable objects.")]
+    public LayerMask grabbableLayer = ~0;
+
+    [Tooltip("How fast the object flies to the hand (lerp speed).")]
+    public float flyToHandSpeed = 10f;
+
+    [Tooltip("Create a visual laser pointer for targeting grabbables.")]
+    public bool showLaserPointer = true;
+
+    [Tooltip("Color of the laser when pointing at a grabbable object.")]
+    public Color laserColor = Color.green;
+
+    [Tooltip("Thickness of the laser pointer line.")]
+    public float laserWidth = 0.005f;
+
     [Header("Debug")]
     [Tooltip("Enable console debug logs to troubleshoot grabbing triggers and inputs.")]
     public bool debugLogging = true;
@@ -36,6 +58,13 @@ public class VRControllerGrab : MonoBehaviour
     private VRGrabbable heldObject;
     private FixedJoint joint;
     private bool wasGrabPressed;
+
+    // Distance grab state tracking
+    private bool isFlyingToHand = false;
+    private float flyProgress = 0f;
+    private Vector3 startWorldPos;
+    private Quaternion startWorldRot;
+    private LineRenderer grabLaser;
 
     // Velocity tracking history
     private const int BUFFER_SIZE = 10;
@@ -54,6 +83,16 @@ public class VRControllerGrab : MonoBehaviour
         if (col == null)
         {
             Debug.LogWarning($"[VR Grab] {gameObject.name} is missing a Collider component! Grabbing will not work. Please add a SphereCollider (with 'Is Trigger' checked) to the {gameObject.name} GameObject itself.", this);
+            
+            // Automatically add a SphereCollider to make grabbing work out-of-box
+            SphereCollider sphereCol = gameObject.AddComponent<SphereCollider>();
+            sphereCol.isTrigger = true;
+            sphereCol.radius = 0.1f;
+            col = sphereCol;
+            if (debugLogging)
+            {
+                Debug.Log($"[VR Grab] Automatically added a SphereCollider (Is Trigger, radius = 0.1) to {gameObject.name} to enable close-range grabbing.");
+            }
         }
         else if (!col.isTrigger)
         {
@@ -71,6 +110,9 @@ public class VRControllerGrab : MonoBehaviour
                 Debug.Log($"[VR Grab] Automatically added a Kinematic Rigidbody to {gameObject.name} to ensure trigger overlaps are detected.");
             }
         }
+
+        // Setup the laser pointer for distance grabbing
+        SetupGrabLaser();
     }
 
     private void OnEnable()
@@ -109,7 +151,14 @@ public class VRControllerGrab : MonoBehaviour
         // Check for state changes (press / release)
         if (isGrabPressed && !wasGrabPressed)
         {
+            // Attempt close-range grab first
             GrabClosest();
+
+            // If we did not grab anything close, try distance grab
+            if (heldObject == null && enableDistanceGrab)
+            {
+                TryDistanceGrab();
+            }
         }
         else if (!isGrabPressed && wasGrabPressed)
         {
@@ -117,6 +166,18 @@ public class VRControllerGrab : MonoBehaviour
         }
 
         wasGrabPressed = isGrabPressed;
+
+        // Handle distance grab flight lerp
+        if (isFlyingToHand && heldObject != null)
+        {
+            UpdateFlight();
+        }
+
+        // Update grab laser visuals
+        if (enableDistanceGrab)
+        {
+            UpdateGrabLaser();
+        }
     }
 
     private bool ReadGrabInput()
@@ -124,12 +185,15 @@ public class VRControllerGrab : MonoBehaviour
         // Try reading from the Input Action
         if (grabAction.action != null && grabAction.action.bindings.Count > 0)
         {
-            // If the action resolves to a float (analog grip trigger), read value
-            if (grabAction.action.activeControl is InputControl<float> floatControl)
+            var value = grabAction.action.ReadValueAsObject();
+            if (value is float floatVal)
             {
-                return floatControl.ReadValue() > grabThreshold;
+                return floatVal > grabThreshold;
             }
-            // Otherwise check if it's a binary button press
+            if (value is Vector2 vectorVal)
+            {
+                return vectorVal.y > grabThreshold || vectorVal.magnitude > grabThreshold;
+            }
             return grabAction.action.IsPressed();
         }
 
@@ -225,20 +289,21 @@ public class VRControllerGrab : MonoBehaviour
     {
         if (heldObject == null) return;
 
-        // Clean up joint if it exists
+        // Clean up joint if it exists instantly so it doesn't zero out velocity constraints
         if (joint != null)
         {
-            Destroy(joint);
+            DestroyImmediate(joint);
             joint = null;
         }
 
-        // Calculate throwing velocities from history buffer
-        Vector3 throwVelocity = GetTrackedVelocity();
-        Vector3 throwAngularVelocity = GetTrackedAngularVelocity();
+        // Calculate throwing velocities from hardware or history buffer
+        Vector3 throwVelocity = GetControllerVelocity();
+        Vector3 throwAngularVelocity = GetControllerAngularVelocity();
 
         // Release the object
         heldObject.Release(throwVelocity, throwAngularVelocity);
         heldObject = null;
+        isFlyingToHand = false; // Reset flight state
 
         // Show controller visuals again
         if (controllerMesh != null)
@@ -257,12 +322,13 @@ public class VRControllerGrab : MonoBehaviour
 
         if (joint != null)
         {
-            Destroy(joint);
+            DestroyImmediate(joint);
             joint = null;
         }
 
         heldObject.Release(Vector3.zero, Vector3.zero);
         heldObject = null;
+        isFlyingToHand = false; // Reset flight state
 
         if (controllerMesh != null)
         {
@@ -305,6 +371,46 @@ public class VRControllerGrab : MonoBehaviour
         return axis * (angle * Mathf.Deg2Rad / timeDiff);
     }
 
+    private Vector3 GetControllerVelocity()
+    {
+        var device = InputDevices.GetDeviceAtXRNode(controllerNode);
+        if (device.isValid)
+        {
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.deviceVelocity, out Vector3 velocity))
+            {
+                // Convert tracking space velocity to world space using XR Origin
+                var originComponent = FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+                Transform origin = originComponent != null ? originComponent.transform : transform.parent;
+                if (origin != null)
+                {
+                    return origin.TransformDirection(velocity);
+                }
+                return velocity;
+            }
+        }
+        return GetTrackedVelocity();
+    }
+
+    private Vector3 GetControllerAngularVelocity()
+    {
+        var device = InputDevices.GetDeviceAtXRNode(controllerNode);
+        if (device.isValid)
+        {
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.deviceAngularVelocity, out Vector3 angularVelocity))
+            {
+                // Convert tracking space angular velocity to world space using XR Origin
+                var originComponent = FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+                Transform origin = originComponent != null ? originComponent.transform : transform.parent;
+                if (origin != null)
+                {
+                    return origin.TransformDirection(angularVelocity);
+                }
+                return angularVelocity;
+            }
+        }
+        return GetTrackedAngularVelocity();
+    }
+
     private void TriggerHaptics(float amplitude, float duration)
     {
         var device = InputDevices.GetDeviceAtXRNode(controllerNode);
@@ -314,9 +420,24 @@ public class VRControllerGrab : MonoBehaviour
         }
     }
 
+    private VRGrabbable GetGrabbableFromCollider(Collider col)
+    {
+        if (col == null) return null;
+        
+        // Quick check on the collider's own GameObject
+        VRGrabbable grabbable = col.GetComponent<VRGrabbable>();
+        if (grabbable != null) return grabbable;
+
+        // O(1) performance bypass for static geometry
+        if (col.attachedRigidbody == null) return null;
+
+        // Fallback for compound objects
+        return col.GetComponentInParent<VRGrabbable>();
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        VRGrabbable grabbable = other.GetComponentInParent<VRGrabbable>();
+        VRGrabbable grabbable = GetGrabbableFromCollider(other);
         if (grabbable != null)
         {
             if (debugLogging)
@@ -333,7 +454,7 @@ public class VRControllerGrab : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        VRGrabbable grabbable = other.GetComponentInParent<VRGrabbable>();
+        VRGrabbable grabbable = GetGrabbableFromCollider(other);
         if (grabbable != null)
         {
             if (debugLogging)
@@ -357,5 +478,234 @@ public class VRControllerGrab : MonoBehaviour
                 objectsInRange.RemoveAt(i);
             }
         }
+    }
+
+    private void SetupGrabLaser()
+    {
+        if (!showLaserPointer) return;
+
+        GameObject laserObj = new GameObject("GrabLaserPointer");
+        laserObj.transform.SetParent(transform);
+        laserObj.transform.localPosition = Vector3.zero;
+        laserObj.transform.localRotation = Quaternion.identity;
+
+        grabLaser = laserObj.AddComponent<LineRenderer>();
+        
+        // We do NOT override the LineRenderer's material in code. This allows Unity to automatically
+        // assign its default URP-native line material, which is fully compatible with VR Single Pass
+        // Instanced rendering and pre-compiled, avoiding any GPU driver hangs or Device Removed crashes.
+        grabLaser.startWidth = laserWidth;
+        grabLaser.endWidth = laserWidth;
+        grabLaser.startColor = laserColor;
+        grabLaser.endColor = laserColor;
+        grabLaser.positionCount = 2;
+        grabLaser.enabled = false;
+    }
+
+    private bool FindDistanceGrabbable(out RaycastHit bestHit, out VRGrabbable bestGrabbable)
+    {
+        bestHit = new RaycastHit();
+        bestGrabbable = null;
+
+        Vector3 rayStart = transform.position + transform.forward * 0.1f;
+        Ray ray = new Ray(rayStart, transform.forward);
+        
+        RaycastHit[] hits = Physics.RaycastAll(ray, distanceGrabRange, grabbableLayer, QueryTriggerInteraction.Ignore);
+        
+        // Sort hits by distance
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (var hit in hits)
+        {
+            // Ignore colliders on the controller itself or its children
+            if (hit.collider.transform.IsChildOf(transform) || hit.collider.gameObject == gameObject)
+                continue;
+
+            VRGrabbable grabbable = GetGrabbableFromCollider(hit.collider);
+            if (grabbable != null && grabbable.CurrentGrabber != this)
+            {
+                bestHit = hit;
+                bestGrabbable = grabbable;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void UpdateGrabLaser()
+    {
+        if (grabLaser == null) return;
+
+        // If we are holding an object, hide the laser
+        if (heldObject != null)
+        {
+            grabLaser.enabled = false;
+            return;
+        }
+
+        if (FindDistanceGrabbable(out RaycastHit hit, out VRGrabbable grabbable))
+        {
+            grabLaser.enabled = true;
+            grabLaser.SetPosition(0, transform.position);
+            grabLaser.SetPosition(1, hit.point);
+        }
+        else
+        {
+            grabLaser.enabled = false;
+        }
+    }
+
+    private void TryDistanceGrab()
+    {
+        if (debugLogging)
+        {
+            Debug.Log($"[VR Grab] {gameObject.name} TryDistanceGrab() triggered.");
+        }
+
+        if (FindDistanceGrabbable(out RaycastHit hit, out VRGrabbable grabbable))
+        {
+            if (grabbable.IsGrabbed && grabbable.CurrentGrabber == this)
+            {
+                return; // Already holding this
+            }
+
+            StartDistanceGrab(grabbable);
+        }
+    }
+
+    private void StartDistanceGrab(VRGrabbable grabbable)
+    {
+        if (debugLogging)
+        {
+            Debug.Log($"[VR Grab] {gameObject.name} starting distance grab on: {grabbable.name}", grabbable.gameObject);
+        }
+
+        heldObject = grabbable;
+        isFlyingToHand = true;
+        flyProgress = 0f;
+
+        // Capture starting position and rotation in world space
+        startWorldPos = heldObject.transform.position;
+        startWorldRot = heldObject.transform.rotation;
+
+        // Call Grab on the object to set its state (e.g. kinematic, ownership)
+        heldObject.Grab(this);
+
+        // Override to kinematic during flight so manual lerp is smooth and doesn't fight physics
+        if (heldObject.Rigidbody != null)
+        {
+            heldObject.Rigidbody.isKinematic = true;
+            heldObject.Rigidbody.useGravity = false;
+        }
+
+        // Optional: Hide controller visuals
+        if (controllerMesh != null)
+        {
+            controllerMesh.SetActive(false);
+        }
+
+        // Trigger initial grab haptics
+        TriggerHaptics(grabHapticAmplitude, grabHapticDuration);
+    }
+
+    private void UpdateFlight()
+    {
+        flyProgress += Time.deltaTime * flyToHandSpeed;
+        if (flyProgress >= 1f)
+        {
+            flyProgress = 1f;
+            isFlyingToHand = false;
+            FinishDistanceGrab();
+        }
+        else
+        {
+            // Calculate target world position and rotation based on controller's current transform
+            Vector3 targetWorldPos;
+            Quaternion targetWorldRot;
+
+            if (heldObject.attachPoint != null)
+            {
+                // Align heldObject so its attachPoint matches the controller
+                targetWorldRot = transform.rotation * Quaternion.Inverse(heldObject.attachPoint.localRotation);
+                targetWorldPos = transform.position - (targetWorldRot * heldObject.attachPoint.localPosition);
+            }
+            else
+            {
+                targetWorldPos = transform.position;
+                targetWorldRot = transform.rotation;
+            }
+
+            // Lerp in world space
+            heldObject.transform.position = Vector3.Lerp(startWorldPos, targetWorldPos, flyProgress);
+            heldObject.transform.rotation = Quaternion.Slerp(startWorldRot, targetWorldRot, flyProgress);
+        }
+    }
+
+    private void FinishDistanceGrab()
+    {
+        if (heldObject == null) return;
+
+        if (debugLogging)
+        {
+            Debug.Log($"[VR Grab] {gameObject.name} finished distance grab on: {heldObject.name}");
+        }
+
+        // Align to final position/rotation in world space
+        Vector3 targetWorldPos;
+        Quaternion targetWorldRot;
+
+        if (heldObject.attachPoint != null)
+        {
+            targetWorldRot = transform.rotation * Quaternion.Inverse(heldObject.attachPoint.localRotation);
+            targetWorldPos = transform.position - (targetWorldRot * heldObject.attachPoint.localPosition);
+        }
+        else
+        {
+            targetWorldPos = transform.position;
+            targetWorldRot = transform.rotation;
+        }
+
+        heldObject.transform.position = targetWorldPos;
+        heldObject.transform.rotation = targetWorldRot;
+
+        // Apply grabbing attachment method
+        if (heldObject.grabType == VRGrabbable.GrabType.Parenting)
+        {
+            heldObject.transform.SetParent(transform);
+            
+            // Re-align local transform for parenting
+            if (heldObject.attachPoint != null)
+            {
+                heldObject.transform.localRotation = Quaternion.Inverse(heldObject.attachPoint.localRotation);
+                heldObject.transform.localPosition = - (heldObject.transform.localRotation * heldObject.attachPoint.localPosition);
+            }
+            else
+            {
+                heldObject.transform.localPosition = Vector3.zero;
+                heldObject.transform.localRotation = Quaternion.identity;
+            }
+        }
+        else if (heldObject.grabType == VRGrabbable.GrabType.FixedJoint)
+        {
+            // Do NOT parent! Keep it in world space / original parent
+            heldObject.transform.SetParent(heldObject.OriginalParent);
+
+            // Make it non-kinematic so the FixedJoint works
+            if (heldObject.Rigidbody != null)
+            {
+                heldObject.Rigidbody.isKinematic = false;
+                heldObject.Rigidbody.useGravity = false;
+            }
+
+            // Create physics joint
+            joint = gameObject.AddComponent<FixedJoint>();
+            joint.breakForce = float.PositiveInfinity;
+            joint.breakTorque = float.PositiveInfinity;
+            joint.connectedBody = heldObject.Rigidbody;
+        }
+
+        // Trigger another subtle haptic pulse to confirm arrival
+        TriggerHaptics(grabHapticAmplitude * 0.8f, grabHapticDuration);
     }
 }
