@@ -63,6 +63,7 @@ public class Teleport_now : MonoBehaviour
     private Vector3 targetPosition;
     private bool isValidTargetHit;
     private Vector3[] pointsBuffer;
+    private float nextLogTime;
 
     private void Awake()
     {
@@ -97,6 +98,17 @@ public class Teleport_now : MonoBehaviour
         if (xrOrigin != null && mainCamera == null)
         {
             mainCamera = xrOrigin.GetComponentInChildren<Camera>();
+        }
+
+        // Setup diagnostics to scan scene colliders on start
+        var colliders = FindObjectsByType<Collider>(FindObjectsSortMode.None);
+        Debug.Log($"[Teleport Setup Diagnostic] Scanning scene... Found {colliders.Length} total colliders.");
+        foreach (var col in colliders)
+        {
+            if (col.CompareTag(walkableTag) || col.name.ToLower().Contains("floor") || col.name.ToLower().Contains("museum"))
+            {
+                Debug.Log($"[Teleport Setup Diagnostic] Found Match: GameObject='{col.gameObject.name}' | Tag='{col.tag}' | Layer='{LayerMask.LayerToName(col.gameObject.layer)}' | Enabled={col.enabled} | IsTrigger={col.isTrigger} | Bounds={col.bounds}");
+            }
         }
     }
 
@@ -144,6 +156,14 @@ public class Teleport_now : MonoBehaviour
 
     private bool ReadTeleportInput()
     {
+        #if UNITY_EDITOR
+        // Debug fallback: Hold 'T' key on keyboard to teleport in the Unity Editor
+        if (Keyboard.current != null && Keyboard.current.tKey.isPressed)
+        {
+            return true;
+        }
+        #endif
+
         // Try reading from the Input Action
         if (teleportAction.action != null && teleportAction.action.bindings.Count > 0)
         {
@@ -194,9 +214,20 @@ public class Teleport_now : MonoBehaviour
         lineRenderer.enabled = true;
         isValidTargetHit = false;
 
-        // Start the ray slightly in front of the hand to prevent self-collision
-        Vector3 rayStart = transform.position + transform.forward * 0.15f;
-        Ray ray = new Ray(rayStart, transform.forward);
+        Vector3 originPos = transform.position;
+        Vector3 originForward = transform.forward;
+
+        #if UNITY_EDITOR
+        if (Keyboard.current != null && Keyboard.current.tKey.isPressed && mainCamera != null)
+        {
+            originPos = mainCamera.transform.position;
+            originForward = mainCamera.transform.forward;
+        }
+        #endif
+
+        // Start the ray slightly in front of the origin to prevent self-collision
+        Vector3 rayStart = originPos + originForward * 0.15f;
+        Ray ray = new Ray(rayStart, originForward);
         RaycastHit hit;
 
         // Perform raycast, ignoring triggers
@@ -232,11 +263,17 @@ public class Teleport_now : MonoBehaviour
                 {
                     teleportReticle.SetActive(false);
                 }
+
+                if (Time.time > nextLogTime)
+                {
+                    Debug.Log($"[Teleport Debug] Hit non-walkable object: '{hit.collider.name}' | Tag: '{hit.collider.tag}' | Slope: {slopeAngle:F1}° (Max: {maxSlopeAngle}°)");
+                    nextLogTime = Time.time + 1.0f;
+                }
             }
 
             // Draw line to the hit point
             lineRenderer.positionCount = 2;
-            lineRenderer.SetPosition(0, transform.position);
+            lineRenderer.SetPosition(0, originPos);
             lineRenderer.SetPosition(1, hit.point);
         }
         else
@@ -248,10 +285,16 @@ public class Teleport_now : MonoBehaviour
                 teleportReticle.SetActive(false);
             }
 
+            if (Time.time > nextLogTime)
+            {
+                Debug.Log($"[Teleport Debug] Straight raycast did not hit any collider. Ray started at {rayStart} pointing {originForward}");
+                nextLogTime = Time.time + 1.0f;
+            }
+
             // Draw line extending out to max range
             lineRenderer.positionCount = 2;
-            lineRenderer.SetPosition(0, transform.position);
-            lineRenderer.SetPosition(1, transform.position + transform.forward * maxRange);
+            lineRenderer.SetPosition(0, originPos);
+            lineRenderer.SetPosition(1, originPos + originForward * maxRange);
         }
     }
 
@@ -267,8 +310,19 @@ public class Teleport_now : MonoBehaviour
         }
         int pointsCount = 0;
 
-        Vector3 startPosition = transform.position + transform.forward * 0.15f;
-        Vector3 velocity = transform.forward * launchSpeed;
+        Vector3 originPos = transform.position;
+        Vector3 originForward = transform.forward;
+
+        #if UNITY_EDITOR
+        if (Keyboard.current != null && Keyboard.current.tKey.isPressed && mainCamera != null)
+        {
+            originPos = mainCamera.transform.position;
+            originForward = mainCamera.transform.forward;
+        }
+        #endif
+
+        Vector3 startPosition = originPos + originForward * 0.15f;
+        Vector3 velocity = originForward * launchSpeed;
         Vector3 gravity = Physics.gravity * gravityScale;
 
         pointsBuffer[0] = startPosition;
@@ -320,6 +374,12 @@ public class Teleport_now : MonoBehaviour
                     {
                         teleportReticle.SetActive(false);
                     }
+
+                    if (Time.time > nextLogTime)
+                    {
+                        Debug.Log($"[Teleport Debug] Parabolic hit non-walkable object: '{hit.collider.name}' | Tag: '{hit.collider.tag}' | Slope: {slopeAngle:F1}° (Max: {maxSlopeAngle}°)");
+                        nextLogTime = Time.time + 1.0f;
+                    }
                 }
                 break; // Stop simulating segment once we hit a surface
             }
@@ -335,6 +395,12 @@ public class Teleport_now : MonoBehaviour
             if (teleportReticle != null)
             {
                 teleportReticle.SetActive(false);
+            }
+
+            if (Time.time > nextLogTime)
+            {
+                Debug.Log($"[Teleport Debug] Parabolic raycast did not hit any collider. Start: {startPosition}, LaunchSpeed: {launchSpeed}, GravityScale: {gravityScale}");
+                nextLogTime = Time.time + 1.0f;
             }
         }
 
