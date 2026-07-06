@@ -139,6 +139,42 @@ public class VRControllerGrab : MonoBehaviour
         // Clean out any destroyed or disabled objects from trigger list
         CleanObjectsInRange();
 
+        #if UNITY_EDITOR
+        // Debug fallback: Press 'G' on the keyboard to grab whatever the controller or camera is targeting
+        if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame)
+        {
+            VRGrabbable target = null;
+
+            // 1. Try to grab whatever the controller's distance grab is already targeting
+            if (FindDistanceGrabbable(out RaycastHit laserHit, out VRGrabbable laserGrabbable))
+            {
+                target = laserGrabbable;
+            }
+
+            // 2. Fallback: Raycast from camera to find a grabbable
+            if (target == null)
+            {
+                var cam = Camera.main;
+                if (cam != null)
+                {
+                    Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+                    RaycastHit camHit;
+                    if (Physics.Raycast(ray, out camHit, distanceGrabRange))
+                    {
+                        target = GetGrabbableFromCollider(camHit.collider);
+                    }
+                }
+            }
+
+            if (target != null)
+            {
+                Debug.Log($"[Grab Debug] Keyboard 'G' triggered grab on: {target.name}");
+                heldObject = target;
+                target.Grab(this);
+            }
+        }
+        #endif
+
         // Read input
         bool isGrabPressed = ReadGrabInput();
 
@@ -491,9 +527,9 @@ public class VRControllerGrab : MonoBehaviour
 
         grabLaser = laserObj.AddComponent<LineRenderer>();
         
-        // We do NOT override the LineRenderer's material in code. This allows Unity to automatically
-        // assign its default URP-native line material, which is fully compatible with VR Single Pass
-        // Instanced rendering and pre-compiled, avoiding any GPU driver hangs or Device Removed crashes.
+        // Assign a default material to prevent the magenta 'missing shader' (pink) look
+        grabLaser.material = new Material(Shader.Find("Sprites/Default"));
+        
         grabLaser.startWidth = laserWidth;
         grabLaser.endWidth = laserWidth;
         grabLaser.startColor = laserColor;

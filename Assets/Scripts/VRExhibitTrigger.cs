@@ -26,6 +26,13 @@ public class VRExhibitTrigger : MonoBehaviour
     [Tooltip("Custom events triggered when the user grabs/triggers this object (e.g. fading in silhouettes, changing scene light, etc.).")]
     public UnityEvent onTrigger;
 
+    [Header("Auto Reset Settings")]
+    [Tooltip("Should the exhibit auto-reset when the player walks away?")]
+    public bool autoResetOnLeave = true;
+
+    [Tooltip("How far away (in meters) the player must walk to trigger the reset.")]
+    public float resetDistance = 4.0f;
+
     private VRGrabbable grabbable;
     private bool hasBeenTriggered = false;
 
@@ -89,6 +96,46 @@ public class VRExhibitTrigger : MonoBehaviour
         if (grabber != null && releaseGrabberOnTrigger)
         {
             grabber.ForceRelease();
+        }
+    }
+
+    private void Update()
+    {
+        if (autoResetOnLeave && hasBeenTriggered)
+        {
+            // Find player camera (VR Headset / Main Camera)
+            Transform playerTransform = null;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                playerTransform = cam.transform;
+            }
+            else
+            {
+                var origin = FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+                if (origin != null)
+                {
+                    playerTransform = origin.transform;
+                }
+            }
+
+            if (playerTransform != null)
+            {
+                float distance = Vector3.Distance(transform.position, playerTransform.position);
+                if (distance > resetDistance)
+                {
+                    ResetExhibit();
+                }
+            }
+        }
+    }
+
+    private void ResetExhibit()
+    {
+        ResetTrigger();
+        if (exhibitPanel != null)
+        {
+            exhibitPanel.ResetPanel();
         }
     }
 
