@@ -1,46 +1,44 @@
-using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// Triggers an interactive exhibit presentation when the pedestal crystal is grabbed in VR.
+/// Features:
+/// - 100% 3D spatialized continuous looping audio anchored to the exhibit stand.
+/// - Opens the TMP story card in world space with page navigation.
+/// - Respawns crystal and particle VFX when the story card is closed.
+/// </summary>
 [RequireComponent(typeof(VRGrabbable))]
 public class VRExhibitTrigger : MonoBehaviour
 {
-    [Header("Audio Narration")]
-    [Tooltip("The AudioSource used to play the narration. If unassigned, one will be created or found on this object.")]
+    [Header("Exhibit Content")]
+    [Tooltip("The audio clip to loop continuously while the card is open.")]
     public AudioSource audioSource;
-    
-    [Tooltip("The narration audio clip for this exhibit.")]
     public AudioClip narrationClip;
 
-    [Header("UI Integration")]
-    [Tooltip("The exhibit info panel that should be activated when this trigger is used.")]
+    [Tooltip("The UI Panel component to display.")]
     public VRExhibitPanelUI exhibitPanel;
 
-    [Header("Exhibit Story (ScriptableObject)")]
-    [Tooltip("Drag the DodoStory / MammothStory / ThylacineStory asset here.")]
+    [Tooltip("Optional ExhibitStory ScriptableObject.")]
     public ExhibitStory exhibitStory;
 
-    [Header("Exhibit Content (Legacy — leave empty if using ExhibitStory above)")]
-    [Tooltip("The structured animal data for this exhibit.")]
-    public VRExhibitPanelUI.AnimalExhibitData animalData;
+    [Tooltip("Legacy inline exhibit data.")]
+    public VRExhibitPanelUI.AnimalExhibitData animalData = new VRExhibitPanelUI.AnimalExhibitData();
 
-    [Header("Visual Effects & Feedback")]
-    [Tooltip("Optional particle system to trigger on contact.")]
+    [Header("Visual Effects")]
+    [Tooltip("Particle system on the crystal that stops during story presentation.")]
     public ParticleSystem interactionParticles;
 
-    [Tooltip("Should the controller force-release this object immediately upon trigger? (Recommended for stationary elements like dials/ice crystals)")]
+    [Header("Interaction Settings")]
+    [Tooltip("Whether the controller immediately drops the crystal upon trigger so the player can aim at the card.")]
     public bool releaseGrabberOnTrigger = true;
 
-    [Header("Custom Visual/Story Events")]
-    [Tooltip("Custom events triggered when the user grabs/triggers this object (e.g. fading in silhouettes, changing scene light, etc.).")]
+    [Header("Events")]
     public UnityEvent onTrigger;
 
-    [Header("Auto Reset Settings")]
-    [Tooltip("Should the exhibit auto-reset when the player walks far away? (Disabled by default so players can read at their own pace)")]
+    [Header("Auto-Reset (Distance)")]
     public bool autoResetOnLeave = false;
-
-    [Tooltip("How far away (in meters) the player must walk to trigger the auto-reset.")]
-    public float resetDistance = 50.0f;
+    public float resetDistance = 10f;
 
     private VRGrabbable grabbable;
     private bool hasBeenTriggered = false;
@@ -48,18 +46,35 @@ public class VRExhibitTrigger : MonoBehaviour
     private void Awake()
     {
         grabbable = GetComponent<VRGrabbable>();
+
+        GameObject audioHost = gameObject;
+        if (exhibitPanel != null)
+        {
+            audioHost = exhibitPanel.gameObject;
+        }
+        else if (transform.parent != null)
+        {
+            audioHost = transform.parent.gameObject;
+        }
+
         if (audioSource == null)
         {
-            audioSource = GetComponent<AudioSource>();
+            audioSource = audioHost.GetComponent<AudioSource>();
             if (audioSource == null)
             {
-                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource = audioHost.AddComponent<AudioSource>();
             }
         }
+
         if (audioSource != null)
         {
             audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 0.0f; // 2D stereo clear museum narration directly into headset
+            audioSource.spatialBlend = 1.0f; // 100% 3D spatial audio in world space
+            audioSource.rolloffMode = AudioRolloffMode.Linear;
+            audioSource.minDistance = 2.0f;  // Clear, crisp sound when standing near exhibit
+            audioSource.maxDistance = 25.0f; // Smoothly fades as player explores museum
+            audioSource.dopplerLevel = 0.0f;
+            audioSource.loop = true;          // Loop continuously while card is displayed
             audioSource.volume = 1.0f;
         }
 
@@ -123,7 +138,7 @@ public class VRExhibitTrigger : MonoBehaviour
 
         Debug.Log($"[VRExhibitTrigger] Triggered exhibit for: {animalData.animalName}");
 
-        // 1. Hide/destroy crystal object mesh & colliders immediately
+        // 1. Hide crystal object mesh & colliders immediately
         try
         {
             SetCrystalVisible(false);
@@ -133,7 +148,7 @@ public class VRExhibitTrigger : MonoBehaviour
             Debug.LogError($"[VRExhibitTrigger] Exception hiding crystal: {ex.Message}");
         }
 
-        // 2. Stop ALL particle systems on crystal & nearby in scene (e.g. Loading_free_blue)
+        // 2. Stop crystal particle systems
         try
         {
             StopAllParticles();
@@ -143,7 +158,7 @@ public class VRExhibitTrigger : MonoBehaviour
             Debug.LogError($"[VRExhibitTrigger] Exception stopping particles: {ex.Message}");
         }
 
-        // 3. Disable any legacy 3D canvas texts to prevent overlay
+        // 3. Disable any legacy 3D canvas texts
         try
         {
             DisableLegacyExhibitCanvases();
@@ -153,15 +168,23 @@ public class VRExhibitTrigger : MonoBehaviour
             Debug.LogError($"[VRExhibitTrigger] Exception disabling legacy canvases: {ex.Message}");
         }
 
-        // 4. Play loud, clear audio narration directly in headset
+        // 4. Play looping 3D spatial audio emanating from the stationary exhibit
         try
         {
             if (audioSource != null && narrationClip != null)
             {
-                audioSource.spatialBlend = 0.0f; // Clear head-locked stereo narration
+                audioSource.Stop();
+                audioSource.clip = narrationClip;
+                audioSource.loop = true;
+                audioSource.spatialBlend = 1.0f; // 100% 3D spatial audio
+                audioSource.rolloffMode = AudioRolloffMode.Linear;
+                audioSource.minDistance = 2.0f;
+                audioSource.maxDistance = 25.0f;
+                audioSource.dopplerLevel = 0.0f;
                 audioSource.volume = 1.0f;
-                audioSource.PlayOneShot(narrationClip);
-                Debug.Log($"[VRExhibitTrigger] Playing narration audio: {narrationClip.name}");
+                audioSource.time = 0f;
+                audioSource.Play();
+                Debug.Log($"[VRExhibitTrigger] Playing looping 3D audio for: {animalData.animalName} ({narrationClip.name})");
             }
         }
         catch (System.Exception ex)
@@ -169,23 +192,20 @@ public class VRExhibitTrigger : MonoBehaviour
             Debug.LogError($"[VRExhibitTrigger] Exception playing audio: {ex.Message}");
         }
 
-        // 5. Pop up UI Info Panel maintaining the exact Editor position and rotation
+        // 5. Open and show the exhibit story card
         try
         {
             if (exhibitPanel != null)
             {
-                exhibitPanel.gameObject.SetActive(true);
-
-                // Prefer ScriptableObject story; fall back to legacy inline data
                 if (exhibitStory != null)
                 {
                     exhibitPanel.ShowStory(exhibitStory);
-                    Debug.Log($"[VRExhibitTrigger] ShowStory called with '{exhibitStory.animalName}'");
+                    Debug.Log($"[VRExhibitTrigger] ShowStory called with ScriptableObject: '{exhibitStory.name}'");
                 }
                 else
                 {
                     exhibitPanel.ShowExhibit(animalData);
-                    Debug.Log($"[VRExhibitTrigger] ShowExhibit (legacy) called for '{animalData.animalName}'");
+                    Debug.Log($"[VRExhibitTrigger] ShowExhibit called for '{animalData.animalName}'");
                 }
             }
             else
@@ -203,7 +223,7 @@ public class VRExhibitTrigger : MonoBehaviour
 
     private void DisableLegacyExhibitCanvases()
     {
-        var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include);
+        var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var canvas in canvases)
         {
             if (canvas != null && canvas.gameObject.scene.isLoaded && Vector3.Distance(transform.position, canvas.transform.position) < 4.0f)
@@ -221,7 +241,7 @@ public class VRExhibitTrigger : MonoBehaviour
             }
         }
 
-        var oldPanels = FindObjectsByType<VRExhibitPanel>(FindObjectsInactive.Include);
+        var oldPanels = FindObjectsByType<VRExhibitPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var op in oldPanels)
         {
             if (op != null && op.gameObject.scene.isLoaded && Vector3.Distance(transform.position, op.transform.position) < 4.0f)
@@ -233,6 +253,18 @@ public class VRExhibitTrigger : MonoBehaviour
 
     private void Update()
     {
+        // Maintain continuous looping audio as long as the exhibit story card is displayed
+        if (hasBeenTriggered && exhibitPanel != null && exhibitPanel.gameObject.activeSelf)
+        {
+            if (audioSource != null && narrationClip != null && !audioSource.isPlaying)
+            {
+                audioSource.clip = narrationClip;
+                audioSource.loop = true;
+                audioSource.time = 0f;
+                audioSource.Play();
+            }
+        }
+
         if (autoResetOnLeave && hasBeenTriggered)
         {
             Transform playerTransform = null;
@@ -320,7 +352,7 @@ public class VRExhibitTrigger : MonoBehaviour
             }
         }
 
-        var allSceneParticles = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include);
+        var allSceneParticles = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var ps in allSceneParticles)
         {
             if (ps != null && ps.gameObject.scene.isLoaded && Vector3.Distance(transform.position, ps.transform.position) < 3.0f)
@@ -350,7 +382,7 @@ public class VRExhibitTrigger : MonoBehaviour
             }
         }
 
-        var allSceneParticles = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include);
+        var allSceneParticles = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var ps in allSceneParticles)
         {
             if (ps != null && ps.gameObject.scene.isLoaded && Vector3.Distance(transform.position, ps.transform.position) < 3.0f)

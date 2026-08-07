@@ -1,55 +1,26 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.XR;
-using UnityEngine.XR.Management;
 
 /// <summary>
-/// Optimized XR Performance & Tracking Auto-Activator.
-/// Fixes startup hourglass loading delay and frame jittering by optimizing VR frame pacing
-/// and ensuring clean, non-blocking XR initialization.
+/// Lightweight XR Scene Configurator.
+/// Ensures clean camera height, controller alignment, and smooth frame pacing
+/// without interfering with Unity's native OpenXR/Oculus initialization.
 /// </summary>
-[DefaultExecutionOrder(-1000)]
 public class XRInputAutoActivator : MonoBehaviour
 {
     [Header("Eye Height Override")]
     [Tooltip("Target standing eye height for the camera offset.")]
     public float targetEyeHeight = 1.1176f;
 
-    private static bool hasInitialized = false;
-
-    private void Awake()
+    private void Start()
     {
-        if (hasInitialized) return;
-        hasInitialized = true;
-
-        OptimizeVRPerformance();
-        InitializeXRSubsystems();
-        ConfigureXROriginAndCamera();
-        EnableInputActions();
-    }
-
-    private void OptimizeVRPerformance()
-    {
-        // VR Pacing Optimization: Disable Unity VSync so the Oculus runtime manages frame timing smoothly
+        // Allow Unity XR runtime to manage frame pacing smoothly
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = -1;
-    }
 
-    private void InitializeXRSubsystems()
-    {
-        if (XRGeneralSettings.Instance != null && XRGeneralSettings.Instance.Manager != null)
-        {
-            var manager = XRGeneralSettings.Instance.Manager;
-            if (!manager.isInitializationComplete)
-            {
-                manager.InitializeLoaderSync();
-            }
-
-            if (manager.isInitializationComplete)
-            {
-                manager.StartSubsystems();
-            }
-        }
+        ConfigureXROriginAndCamera();
+        EnableTrackedPoseDrivers();
     }
 
     private void ConfigureXROriginAndCamera()
@@ -76,8 +47,8 @@ public class XRInputAutoActivator : MonoBehaviour
             }
         }
 
-        // Ensure both Left and Right VR Controllers are centered at local (0,0,0) under Camera Offset
-        var grabbers = FindObjectsByType<VRControllerGrab>(FindObjectsInactive.Include);
+        // Center Left and Right VR Controllers under Camera Offset
+        var grabbers = FindObjectsByType<VRControllerGrab>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var grabber in grabbers)
         {
             if (grabber != null)
@@ -88,19 +59,9 @@ public class XRInputAutoActivator : MonoBehaviour
         }
     }
 
-    private void EnableInputActions()
+    private void EnableTrackedPoseDrivers()
     {
-        // Enable scene input action assets without obsolete FindObjectsSortMode warnings
-        var activeAssets = FindObjectsByType<InputActionAsset>(FindObjectsInactive.Exclude);
-        foreach (var asset in activeAssets)
-        {
-            if (asset != null && !asset.enabled)
-            {
-                asset.Enable();
-            }
-        }
-
-        var drivers = FindObjectsByType<TrackedPoseDriver>(FindObjectsInactive.Exclude);
+        var drivers = FindObjectsByType<TrackedPoseDriver>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var driver in drivers)
         {
             if (driver != null)

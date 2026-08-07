@@ -41,7 +41,7 @@ public static class SceneDiagnostic
                 writer.WriteLine($"  Animal Name: '{t.animalData.animalName}'");
                 writer.WriteLine($"  Scientific Name: '{t.animalData.scientificName}'");
                 writer.WriteLine($"  Status: '{t.animalData.status}'");
-                writer.WriteLine($"  Page Count: {(t.animalData.pages != null ? t.animalData.pages.Length : 0)}");
+                writer.WriteLine($"  Page Count: {(t.animalData.pages != null ? t.animalData.pages.Count : 0)}");
                 
                 var grabbable = t.GetComponent<VRGrabbable>();
                 writer.WriteLine($"  Has VRGrabbable: {grabbable != null}");

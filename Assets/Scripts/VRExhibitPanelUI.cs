@@ -33,14 +33,16 @@ public class VRExhibitPanelUI : MonoBehaviour
     // ── Backwards-compat struct so VRExhibitTrigger old field still compiles ──
     [System.Serializable]
     public struct AnimalPageData { [TextArea(3, 8)] public string content; }
+
     [System.Serializable]
-    public struct AnimalExhibitData
+    public class AnimalExhibitData
     {
-        public string animalName;
-        public string scientificName;
-        public string status;
-        public AnimalPageData[] pages;
+        public string animalName = "Extinct Animal";
+        public string scientificName = "Species";
+        public string status = "EXTINCT";
+        public System.Collections.Generic.List<AnimalPageData> pages = new System.Collections.Generic.List<AnimalPageData>();
     }
+
 
     private void Awake()
     {
@@ -50,6 +52,9 @@ public class VRExhibitPanelUI : MonoBehaviour
 
         var uiDoc = GetComponent<UnityEngine.UIElements.UIDocument>();
         if (uiDoc != null) uiDoc.enabled = false;
+
+        var panelRaycaster = GetComponent("PanelRaycaster") as MonoBehaviour;
+        if (panelRaycaster != null) panelRaycaster.enabled = false;
 
         // If panelRoot not explicitly assigned, use this GameObject
         if (panelRoot == null) panelRoot = gameObject;
@@ -168,6 +173,22 @@ public class VRExhibitPanelUI : MonoBehaviour
         {
             currentPage--;
             RefreshPage();
+        }
+    }
+
+    /// <summary>
+    /// Flips to next page, or closes the card if already on the final page.
+    /// </summary>
+    public void NextOrClose()
+    {
+        if (currentStory == null) return;
+        if (currentPage < currentStory.pages.Count - 1)
+        {
+            NextPage();
+        }
+        else
+        {
+            ClosePanel();
         }
     }
 

@@ -597,9 +597,9 @@ public class VRControllerGrab : MonoBehaviour
             grabLaser.SetPosition(0, transform.position);
             grabLaser.SetPosition(1, hit.point);
         }
-        else if (Physics.Raycast(new Ray(transform.position, transform.forward), out RaycastHit uiHit, distanceGrabRange))
+        else if (Physics.Raycast(new Ray(transform.position, transform.forward), out RaycastHit uiHit, distanceGrabRange, ~0, QueryTriggerInteraction.Collide))
         {
-            if (uiHit.collider.GetComponentInParent<VRExhibitPanelUI>() != null)
+            if (uiHit.collider.GetComponentInParent<VRExhibitPanelUI>() != null || uiHit.collider.GetComponentInParent<UnityEngine.UI.Button>() != null)
             {
                 grabLaser.enabled = true;
                 grabLaser.SetPosition(0, transform.position);
@@ -632,21 +632,56 @@ public class VRControllerGrab : MonoBehaviour
         }
         else
         {
-            // Check if raycast hits an exhibit UI panel for page navigation
+            // Check if raycast hits an exhibit UI panel or interactive UI button
             Ray ray = new Ray(transform.position, transform.forward);
-            if (Physics.Raycast(ray, out RaycastHit uiHit, distanceGrabRange))
+            if (Physics.Raycast(ray, out RaycastHit uiHit, distanceGrabRange, ~0, QueryTriggerInteraction.Collide))
             {
-                var panelUI = uiHit.collider.GetComponentInParent<VRExhibitPanelUI>();
-                if (panelUI != null)
+                // 1. Direct Button click if hitting a Button with BoxCollider
+                var btn = uiHit.collider.GetComponentInParent<UnityEngine.UI.Button>();
+                if (btn != null && btn.gameObject.activeInHierarchy && btn.interactable)
                 {
-                    Vector3 localHitPoint = panelUI.transform.InverseTransformPoint(uiHit.point);
-                    if (localHitPoint.x < -0.1f)
+                    btn.onClick.Invoke();
+                    TriggerHaptics(0.4f, 0.1f);
+                    return;
+                }
+
+                // 2. Panel body click with coordinate & button name detection
+                var panelUI = uiHit.collider.GetComponentInParent<VRExhibitPanelUI>();
+                if (panelUI != null && panelUI.gameObject.activeInHierarchy)
+                {
+                    string hitName = uiHit.collider.gameObject.name.ToLower();
+                    if (hitName.Contains("close"))
                     {
-                        panelUI.OnBackClicked();
+                        panelUI.ClosePanel();
+                    }
+                    else if (hitName.Contains("back") || hitName.Contains("prev"))
+                    {
+                        panelUI.PreviousPage();
+                    }
+                    else if (hitName.Contains("next"))
+                    {
+                        panelUI.NextPage();
                     }
                     else
                     {
-                        panelUI.OnNextClicked();
+                        // Convert hit point into ExhibitCanvas local space
+                        Transform canvasT = panelUI.transform.Find("ExhibitCanvas");
+                        if (canvasT == null) canvasT = panelUI.transform;
+
+                        Vector3 localCanvasPoint = canvasT.InverseTransformPoint(uiHit.point);
+                        
+                        // Bottom row of canvas (y < 0 in centered 650x520 space)
+                        if (localCanvasPoint.y < 50f)
+                        {
+                            if (localCanvasPoint.x < -30f)
+                            {
+                                panelUI.PreviousPage();
+                            }
+                            else if (localCanvasPoint.x > 30f)
+                            {
+                                panelUI.NextOrClose();
+                            }
+                        }
                     }
                     TriggerHaptics(0.3f, 0.1f);
                 }
