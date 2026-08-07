@@ -1,0 +1,171 @@
+.exhibit-container {
+    width: 680px;
+    height: 540px;
+    background-color: rgb(10, 12, 18);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+    border-left-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-top-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-top-left-radius: 24px;
+    border-bottom-left-radius: 24px;
+    border-top-right-radius: 24px;
+    border-bottom-right-radius: 24px;
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-top: 32px;
+    padding-bottom: 28px;
+    opacity: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.exhibit-container--visible {
+    opacity: 1;
+    display: flex;
+    visibility: visible;
+}
+
+.exhibit-header {
+    margin-bottom: 15px;
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(255, 255, 255, 0.4);
+    padding-bottom: 15px;
+    flex-direction: column;
+}
+
+.exhibit-title {
+    font-size: 38px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+    padding: 0;
+    opacity: 1;
+}
+
+.exhibit-subtitle {
+    font-size: 20px;
+    color: rgb(180, 220, 255);
+    -unity-font-style: bold-and-italic;
+    margin-bottom: 10px;
+    padding: 0;
+    opacity: 1;
+}
+
+.exhibit-status-badge {
+    background-color: rgb(180, 20, 20);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(255, 100, 100);
+    border-right-color: rgb(255, 100, 100);
+    border-top-color: rgb(255, 100, 100);
+    border-bottom-color: rgb(255, 100, 100);
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    align-self: flex-start;
+}
+
+.exhibit-status-text {
+    font-size: 15px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    padding: 0;
+    margin: 0;
+    opacity: 1;
+}
+
+.exhibit-content-container {
+    flex-grow: 1;
+    margin-bottom: 15px;
+    min-height: 200px;
+}
+
+.exhibit-text {
+    font-size: 22px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    white-space: normal;
+    padding: 10px;
+    margin: 0;
+    flex-grow: 1;
+    min-height: 200px;
+    opacity: 1;
+}
+
+.exhibit-footer {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top-width: 2px;
+    border-top-color: rgba(255, 255, 255, 0.3);
+    padding-top: 15px;
+    height: 65px;
+}
+
+.exhibit-button {
+    background-color: rgb(40, 50, 75);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-top-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    color: rgb(255, 255, 255);
+    padding-left: 28px;
+    padding-right: 28px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    min-width: 130px;
+    opacity: 1;
+}
+
+.exhibit-button:hover {
+    background-color: rgb(70, 90, 130);
+}
+
+.exhibit-button--disabled {
+    opacity: 0.35;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.exhibit-indicators {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.exhibit-dot {
+    width: 14px;
+    height: 14px;
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
+    background-color: rgba(255, 255, 255, 0.4);
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+.exhibit-dot--active {
+    background-color: rgb(255, 255, 255);
+    scale: 1.4;
+}

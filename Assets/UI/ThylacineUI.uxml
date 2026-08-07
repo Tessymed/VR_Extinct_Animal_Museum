@@ -1,0 +1,24 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Style src="project://database/Assets/UI/MainUI.uss" />
+    <ui:VisualElement name="CardContainer" class="exhibit-container">
+        <ui:VisualElement class="exhibit-header">
+            <ui:Label name="AnimalName" text="Tasmanian Tiger" class="exhibit-title"/>
+            <ui:Label name="ScientificName" text="Thylacinus cynocephalus" class="exhibit-subtitle"/>
+            <ui:VisualElement class="exhibit-status-badge">
+                <ui:Label name="ExtinctStatus" text="EXTINCT" class="exhibit-status-text"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="exhibit-content-container">
+            <ui:Label name="PageContent" text="The Thylacine, or Tasmanian Tiger, was the largest carnivorous marsupial of modern times. It had a dog-like appearance with dark transverse stripes across its back, a stiff tail, and a pouch." class="exhibit-text"/>
+        </ui:VisualElement>
+        <ui:VisualElement class="exhibit-footer">
+            <ui:Button name="BackButton" text="Back" class="exhibit-button"/>
+            <ui:VisualElement name="Indicators" class="exhibit-indicators">
+                <ui:VisualElement name="Dot0" class="exhibit-dot exhibit-dot--active"/>
+                <ui:VisualElement name="Dot1" class="exhibit-dot"/>
+                <ui:VisualElement name="Dot2" class="exhibit-dot"/>
+            </ui:VisualElement>
+            <ui:Button name="NextButton" text="Next" class="exhibit-button"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
