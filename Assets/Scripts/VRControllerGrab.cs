@@ -51,7 +51,7 @@ public class VRControllerGrab : MonoBehaviour
 
     [Header("Debug")]
     [Tooltip("Enable console debug logs to troubleshoot grabbing triggers and inputs.")]
-    public bool debugLogging = true;
+    public bool debugLogging = false;
 
     // State tracking
     private List<VRGrabbable> objectsInRange = new List<VRGrabbable>();
@@ -82,21 +82,20 @@ public class VRControllerGrab : MonoBehaviour
         Collider col = GetComponent<Collider>();
         if (col == null)
         {
-            Debug.LogWarning($"[VR Grab] {gameObject.name} is missing a Collider component! Grabbing will not work. Please add a SphereCollider (with 'Is Trigger' checked) to the {gameObject.name} GameObject itself.", this);
+            if (debugLogging)
+            {
+                Debug.LogWarning($"[VR Grab] {gameObject.name} is missing a Collider component! Automatically adding SphereCollider.");
+            }
             
             // Automatically add a SphereCollider to make grabbing work out-of-box
             SphereCollider sphereCol = gameObject.AddComponent<SphereCollider>();
             sphereCol.isTrigger = true;
             sphereCol.radius = 0.1f;
             col = sphereCol;
-            if (debugLogging)
-            {
-                Debug.Log($"[VR Grab] Automatically added a SphereCollider (Is Trigger, radius = 0.1) to {gameObject.name} to enable close-range grabbing.");
-            }
         }
-        else if (!col.isTrigger)
+        else if (!col.isTrigger && debugLogging)
         {
-            Debug.LogWarning($"[VR Grab] {gameObject.name}'s Collider is not set to a Trigger! Please check 'Is Trigger' in the Inspector.", this);
+            Debug.LogWarning($"[VR Grab] {gameObject.name}'s Collider is not set to a Trigger!", this);
         }
 
         // Automatically add a Kinematic Rigidbody to the controller to make trigger overlaps 100% reliable

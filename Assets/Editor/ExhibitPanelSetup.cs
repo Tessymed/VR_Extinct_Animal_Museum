@@ -13,27 +13,26 @@ using TMPro;
 /// </summary>
 public static class ExhibitPanelSetup
 {
-    // ── Layout constants (metres, World Space canvas) ──────────────────────
-    const float CANVAS_W      = 1.4f;
-    const float CANVAS_H      = 1.0f;
-    const float CANVAS_SCALE  = 0.002f;   // pixels → world units
+    // ── Layout constants (matching original panel 650x520 sizeDelta) ──────────────
+    const float CANVAS_W      = 650f;
+    const float CANVAS_H      = 520f;
 
-    const float TITLE_FONT    = 38f;
+    const float TITLE_FONT    = 34f;
     const float SCI_FONT      = 22f;
     const float STATUS_FONT   = 18f;
     const float BODY_FONT     = 22f;
     const float PAGE_FONT     = 18f;
-    const float BTN_FONT      = 24f;
+    const float BTN_FONT      = 22f;
 
-    static readonly Color BG_COLOUR     = new Color(0.039f, 0.047f, 0.071f, 0.97f);  // near-black
+    static readonly Color BG_COLOUR     = new Color(0.04f, 0.05f, 0.08f, 0.98f);  // dark museum navy card
     static readonly Color TEXT_COLOUR   = Color.white;
-    static readonly Color BTN_NORMAL    = new Color(0.15f, 0.15f, 0.25f, 1f);
-    static readonly Color BTN_HOVER     = new Color(0.25f, 0.25f, 0.45f, 1f);
-    static readonly Color CLOSE_COLOUR  = new Color(0.55f, 0.10f, 0.10f, 1f);
+    static readonly Color BTN_NORMAL    = new Color(0.18f, 0.18f, 0.30f, 1f);
+    static readonly Color BTN_HOVER     = new Color(0.28f, 0.28f, 0.50f, 1f);
+    static readonly Color CLOSE_COLOUR  = new Color(0.65f, 0.12f, 0.12f, 1f);
 
     // ──────────────────────────────────────────────────────────────────────
     [MenuItem("Tools/Setup Exhibit Panel(s)")]
-    static void SetupSelected()
+    public static void SetupSelected()
     {
         int count = 0;
         foreach (GameObject go in Selection.gameObjects)
@@ -55,10 +54,17 @@ public static class ExhibitPanelSetup
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    static void BuildPanel(VRExhibitPanelUI panel)
+    public static void BuildPanel(VRExhibitPanelUI panel)
     {
         GameObject root = panel.gameObject;
         Undo.RegisterFullObjectHierarchyUndo(root, "Setup Exhibit Panel");
+
+        // ── 0. Disable legacy PanelRenderer & UIDocument ─────────────────
+        var panelRenderer = root.GetComponent("PanelRenderer") as MonoBehaviour;
+        if (panelRenderer != null) panelRenderer.enabled = false;
+
+        var uiDoc = root.GetComponent<UnityEngine.UIElements.UIDocument>();
+        if (uiDoc != null) uiDoc.enabled = false;
 
         // ── 1. Remove any stale canvas we previously created ─────────────
         var old = root.transform.Find("ExhibitCanvas");
@@ -77,8 +83,11 @@ public static class ExhibitPanelSetup
         cg.alpha = 1f;
 
         var canvasRT = canvasGO.GetComponent<RectTransform>();
-        canvasRT.sizeDelta        = new Vector2(CANVAS_W / CANVAS_SCALE, CANVAS_H / CANVAS_SCALE);
-        canvasRT.localScale       = Vector3.one * CANVAS_SCALE;
+        canvasRT.anchorMin        = Vector2.zero;
+        canvasRT.anchorMax        = Vector2.one;
+        canvasRT.offsetMin        = Vector2.zero;
+        canvasRT.offsetMax        = Vector2.zero;
+        canvasRT.localScale       = Vector3.one * 0.0065f;  // Perfect 1.4m x 1.0m world scale relative to 0.307 parent
         canvasRT.localPosition    = Vector3.zero;
         canvasRT.localRotation    = Quaternion.identity;
 
@@ -89,47 +98,47 @@ public static class ExhibitPanelSetup
         // ── 3. Create layout areas (normalised anchor coords) ─────────────
         // Title row  (top)
         var titleGO      = MakeTMPLabel(canvasGO, "TitleText",
-                                        new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.97f),
+                                        new Vector2(0.06f, 0.82f), new Vector2(0.94f, 0.96f),
                                         TITLE_FONT, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
 
         // Scientific name row
         var sciGO        = MakeTMPLabel(canvasGO, "ScientificNameText",
-                                        new Vector2(0.05f, 0.72f), new Vector2(0.70f, 0.83f),
+                                        new Vector2(0.06f, 0.72f), new Vector2(0.70f, 0.82f),
                                         SCI_FONT, TextAlignmentOptions.MidlineLeft, FontStyles.Italic);
 
         // Status badge (top-right)
         var statusGO     = MakeTMPLabel(canvasGO, "StatusText",
-                                        new Vector2(0.70f, 0.72f), new Vector2(0.95f, 0.83f),
+                                        new Vector2(0.70f, 0.72f), new Vector2(0.94f, 0.82f),
                                         STATUS_FONT, TextAlignmentOptions.MidlineRight, FontStyles.Bold);
 
         // Divider line
-        MakeDivider(canvasGO, new Vector2(0.05f, 0.705f), new Vector2(0.95f, 0.715f));
+        MakeDivider(canvasGO, new Vector2(0.06f, 0.705f), new Vector2(0.94f, 0.715f));
 
-        // Body text (main area)
+        // Body text (main story area)
         var bodyGO       = MakeTMPLabel(canvasGO, "BodyText",
-                                        new Vector2(0.05f, 0.18f), new Vector2(0.95f, 0.70f),
+                                        new Vector2(0.06f, 0.20f), new Vector2(0.94f, 0.69f),
                                         BODY_FONT, TextAlignmentOptions.TopLeft, FontStyles.Normal);
 
         // Page indicator (bottom-centre)
         var pageGO       = MakeTMPLabel(canvasGO, "PageIndicatorText",
-                                        new Vector2(0.35f, 0.04f), new Vector2(0.65f, 0.14f),
+                                        new Vector2(0.35f, 0.05f), new Vector2(0.65f, 0.16f),
                                         PAGE_FONT, TextAlignmentOptions.Center, FontStyles.Normal);
 
-        // ── 4. Buttons ────────────────────────────────────────────────────
+        // ── 4. Navigation Buttons ─────────────────────────────────────────
         // Back (bottom-left)
         var backGO  = MakeButton(canvasGO, "BackButton",
-                                 new Vector2(0.05f, 0.04f), new Vector2(0.28f, 0.16f),
-                                 "◀  Back", BTN_NORMAL, panel, "OnBackClicked");
+                                 new Vector2(0.06f, 0.05f), new Vector2(0.28f, 0.17f),
+                                 "< Back", BTN_NORMAL, panel, "OnBackClicked");
 
         // Next (bottom-right)
         var nextGO  = MakeButton(canvasGO, "NextButton",
-                                 new Vector2(0.72f, 0.04f), new Vector2(0.95f, 0.16f),
-                                 "Next  ▶", BTN_NORMAL, panel, "OnNextClicked");
+                                 new Vector2(0.72f, 0.05f), new Vector2(0.94f, 0.17f),
+                                 "Next >", BTN_NORMAL, panel, "OnNextClicked");
 
         // Close (bottom-right, shown on last page only at runtime)
         var closeGO = MakeButton(canvasGO, "CloseButton",
-                                 new Vector2(0.72f, 0.04f), new Vector2(0.95f, 0.16f),
-                                 "✕  Close", CLOSE_COLOUR, panel, "ClosePanel");
+                                 new Vector2(0.72f, 0.05f), new Vector2(0.94f, 0.17f),
+                                 "X Close", CLOSE_COLOUR, panel, "ClosePanel");
 
         // ── 5. Wire serialized fields via SerializedObject ────────────────
         var so = new SerializedObject(panel);
@@ -147,7 +156,7 @@ public static class ExhibitPanelSetup
         so.ApplyModifiedProperties();
 
         EditorUtility.SetDirty(panel);
-        Debug.Log($"[ExhibitPanelSetup] ✅ '{root.name}' — all fields wired automatically.");
+        Debug.Log($"[ExhibitPanelSetup] ✅ '{root.name}' — full-size TMP canvas built & all fields wired.");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -166,13 +175,13 @@ public static class ExhibitPanelSetup
         rt.offsetMin = rt.offsetMax = Vector2.zero;
 
         var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text           = name;           // placeholder; replaced at runtime
-        tmp.fontSize       = fontSize;
-        tmp.alignment      = align;
-        tmp.fontStyle      = style;
-        tmp.color          = TEXT_COLOUR;
+        tmp.text               = name;           // placeholder; replaced at runtime
+        tmp.fontSize           = fontSize;
+        tmp.alignment          = align;
+        tmp.fontStyle          = style;
+        tmp.color              = TEXT_COLOUR;
         tmp.enableWordWrapping = true;
-        tmp.overflowMode   = TextOverflowModes.Ellipsis;
+        tmp.overflowMode       = TextOverflowModes.Ellipsis;
 
         return go;
     }
@@ -213,7 +222,7 @@ public static class ExhibitPanelSetup
         var btn = go.AddComponent<Button>();
 
         // Hover colour state
-        var colours        = btn.colors;
+        var colours              = btn.colors;
         colours.normalColor      = bgColour;
         colours.highlightedColor = BTN_HOVER;
         colours.pressedColor     = new Color(bgColour.r * 1.3f, bgColour.g * 1.3f, bgColour.b * 1.3f, 1f);

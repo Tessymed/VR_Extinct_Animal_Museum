@@ -208,6 +208,12 @@ public class VRExhibitTrigger : MonoBehaviour
         {
             if (canvas != null && canvas.gameObject.scene.isLoaded && Vector3.Distance(transform.position, canvas.transform.position) < 4.0f)
             {
+                // Never disable our active TMP exhibit card canvas!
+                if (canvas.GetComponentInParent<VRExhibitPanelUI>() != null || canvas.gameObject.name == "ExhibitCanvas")
+                {
+                    continue;
+                }
+
                 if (canvas.GetComponent<UnityEngine.UIElements.UIDocument>() == null)
                 {
                     canvas.gameObject.SetActive(false);
@@ -259,7 +265,7 @@ public class VRExhibitTrigger : MonoBehaviour
     public void ResetExhibit()
     {
         ResetTrigger();
-        if (exhibitPanel != null)
+        if (exhibitPanel != null && exhibitPanel.gameObject.activeSelf)
         {
             exhibitPanel.HidePanel();
         }

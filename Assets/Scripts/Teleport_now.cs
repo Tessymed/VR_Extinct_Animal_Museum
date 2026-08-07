@@ -57,6 +57,10 @@ public class Teleport_now : MonoBehaviour
     [Tooltip("Gravity acceleration scale for the curve simulation.")]
     public float gravityScale = 1.5f;
 
+    [Header("Debug")]
+    [Tooltip("Enable console debug logs for teleport raycasts.")]
+    public bool debugLogging = false;
+
     // Component cache
     private LineRenderer lineRenderer;
     private bool wasTeleportActive;
@@ -101,13 +105,16 @@ public class Teleport_now : MonoBehaviour
         }
 
         // Setup diagnostics to scan scene colliders on start
-        var colliders = FindObjectsByType<Collider>(FindObjectsInactive.Exclude);
-        Debug.Log($"[Teleport Setup Diagnostic] Scanning scene... Found {colliders.Length} total colliders.");
-        foreach (var col in colliders)
+        if (debugLogging)
         {
-            if (col.CompareTag(walkableTag) || col.name.ToLower().Contains("floor") || col.name.ToLower().Contains("museum"))
+            var colliders = FindObjectsByType<Collider>(FindObjectsInactive.Exclude);
+            Debug.Log($"[Teleport Setup Diagnostic] Scanning scene... Found {colliders.Length} total colliders.");
+            foreach (var col in colliders)
             {
-                Debug.Log($"[Teleport Setup Diagnostic] Found Match: GameObject='{col.gameObject.name}' | Tag='{col.tag}' | Layer='{LayerMask.LayerToName(col.gameObject.layer)}' | Enabled={col.enabled} | IsTrigger={col.isTrigger} | Bounds={col.bounds}");
+                if (col.CompareTag(walkableTag) || col.name.ToLower().Contains("floor") || col.name.ToLower().Contains("museum"))
+                {
+                    Debug.Log($"[Teleport Setup Diagnostic] Found Match: GameObject='{col.gameObject.name}' | Tag='{col.tag}' | Layer='{LayerMask.LayerToName(col.gameObject.layer)}' | Enabled={col.enabled} | IsTrigger={col.isTrigger} | Bounds={col.bounds}");
+                }
             }
         }
     }
@@ -264,7 +271,7 @@ public class Teleport_now : MonoBehaviour
                     teleportReticle.SetActive(false);
                 }
 
-                if (Time.time > nextLogTime)
+                if (debugLogging && Time.time > nextLogTime)
                 {
                     Debug.Log($"[Teleport Debug] Hit non-walkable object: '{hit.collider.name}' | Tag: '{hit.collider.tag}' | Slope: {slopeAngle:F1}° (Max: {maxSlopeAngle}°)");
                     nextLogTime = Time.time + 1.0f;
@@ -285,7 +292,7 @@ public class Teleport_now : MonoBehaviour
                 teleportReticle.SetActive(false);
             }
 
-            if (Time.time > nextLogTime)
+            if (debugLogging && Time.time > nextLogTime)
             {
                 Debug.Log($"[Teleport Debug] Straight raycast did not hit any collider. Ray started at {rayStart} pointing {originForward}");
                 nextLogTime = Time.time + 1.0f;
@@ -375,7 +382,7 @@ public class Teleport_now : MonoBehaviour
                         teleportReticle.SetActive(false);
                     }
 
-                    if (Time.time > nextLogTime)
+                    if (debugLogging && Time.time > nextLogTime)
                     {
                         Debug.Log($"[Teleport Debug] Parabolic hit non-walkable object: '{hit.collider.name}' | Tag: '{hit.collider.tag}' | Slope: {slopeAngle:F1}° (Max: {maxSlopeAngle}°)");
                         nextLogTime = Time.time + 1.0f;
@@ -397,7 +404,7 @@ public class Teleport_now : MonoBehaviour
                 teleportReticle.SetActive(false);
             }
 
-            if (Time.time > nextLogTime)
+            if (debugLogging && Time.time > nextLogTime)
             {
                 Debug.Log($"[Teleport Debug] Parabolic raycast did not hit any collider. Start: {startPosition}, LaunchSpeed: {launchSpeed}, GravityScale: {gravityScale}");
                 nextLogTime = Time.time + 1.0f;

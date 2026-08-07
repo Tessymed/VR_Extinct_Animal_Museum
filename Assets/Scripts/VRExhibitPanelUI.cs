@@ -44,6 +44,13 @@ public class VRExhibitPanelUI : MonoBehaviour
 
     private void Awake()
     {
+        // Disable legacy PanelRenderer and UIDocument so UI Toolkit cards never render
+        var pr = GetComponent("PanelRenderer") as MonoBehaviour;
+        if (pr != null) pr.enabled = false;
+
+        var uiDoc = GetComponent<UnityEngine.UIElements.UIDocument>();
+        if (uiDoc != null) uiDoc.enabled = false;
+
         // If panelRoot not explicitly assigned, use this GameObject
         if (panelRoot == null) panelRoot = gameObject;
 
@@ -71,6 +78,22 @@ public class VRExhibitPanelUI : MonoBehaviour
 
         panelRoot.SetActive(true);
 
+        // Ensure all child canvases and CanvasGroups are active and visible
+        var childCanvases = panelRoot.GetComponentsInChildren<Canvas>(true);
+        foreach (var c in childCanvases)
+        {
+            c.gameObject.SetActive(true);
+            c.enabled = true;
+        }
+
+        var canvasGroups = panelRoot.GetComponentsInChildren<CanvasGroup>(true);
+        foreach (var cg in canvasGroups)
+        {
+            cg.alpha = 1f;
+            cg.interactable = true;
+            cg.blocksRaycasts = true;
+        }
+
         LogStoryState();
         RefreshPage();
     }
@@ -94,18 +117,35 @@ public class VRExhibitPanelUI : MonoBehaviour
         ShowStory(temp);
     }
 
+    private bool isHiding = false;
+
     public void HidePanel()
     {
-        panelRoot.SetActive(false);
-        currentStory = null;
-        currentPage  = 0;
-        OnPanelClosed?.Invoke();
+        if (isHiding) return;
+        isHiding = true;
+
+        try
+        {
+            if (panelRoot != null) panelRoot.SetActive(false);
+            currentStory = null;
+            currentPage  = 0;
+            OnPanelClosed?.Invoke();
+        }
+        finally
+        {
+            isHiding = false;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Button callbacks — wire these in the Inspector or via VR button events
-    // Aliases kept for VRControllerGrab.cs backward compatibility
+    // Legacy / Backward-Compatibility Shims
     // ─────────────────────────────────────────────────────────────────────────
+
+    public void SetData(AnimalExhibitData data) => ShowExhibit(data);
+    public void UpdateUI() { if (currentStory != null) RefreshPage(); }
+    public void ActivatePanel() { if (currentStory != null) ShowStory(currentStory); }
+    public void ResetPanel() => HidePanel();
+    public void TogglePanel() { if (panelRoot != null && panelRoot.activeSelf) HidePanel(); else if (currentStory != null) ShowStory(currentStory); }
 
     public void OnNextClicked() => NextPage();
     public void OnBackClicked() => PreviousPage();
