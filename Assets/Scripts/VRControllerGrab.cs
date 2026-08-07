@@ -549,6 +549,8 @@ public class VRControllerGrab : MonoBehaviour
         grabLaser.enabled = false;
     }
 
+    private static RaycastHit[] staticHitsBuffer = new RaycastHit[16];
+
     private bool FindDistanceGrabbable(out RaycastHit bestHit, out VRGrabbable bestGrabbable)
     {
         bestHit = new RaycastHit();
@@ -557,27 +559,28 @@ public class VRControllerGrab : MonoBehaviour
         Vector3 rayStart = transform.position + transform.forward * 0.1f;
         Ray ray = new Ray(rayStart, transform.forward);
         
-        RaycastHit[] hits = Physics.RaycastAll(ray, distanceGrabRange, grabbableLayer, QueryTriggerInteraction.Ignore);
-        
-        // Sort hits by distance
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        int hitCount = Physics.RaycastNonAlloc(ray, staticHitsBuffer, distanceGrabRange, grabbableLayer, QueryTriggerInteraction.Ignore);
+        if (hitCount == 0) return false;
 
-        foreach (var hit in hits)
+        float closestDist = float.MaxValue;
+        for (int i = 0; i < hitCount; i++)
         {
-            // Ignore colliders on the controller itself or its children
+            var hit = staticHitsBuffer[i];
+            if (hit.collider == null) continue;
+
             if (hit.collider.transform.IsChildOf(transform) || hit.collider.gameObject == gameObject)
                 continue;
 
             VRGrabbable grabbable = GetGrabbableFromCollider(hit.collider);
-            if (grabbable != null && grabbable.CurrentGrabber != this)
+            if (grabbable != null && grabbable.CurrentGrabber != this && hit.distance < closestDist)
             {
+                closestDist = hit.distance;
                 bestHit = hit;
                 bestGrabbable = grabbable;
-                return true;
             }
         }
 
-        return false;
+        return (bestGrabbable != null);
     }
 
     private void UpdateGrabLaser()
@@ -597,9 +600,11 @@ public class VRControllerGrab : MonoBehaviour
             grabLaser.SetPosition(0, transform.position);
             grabLaser.SetPosition(1, hit.point);
         }
-        else if (Physics.Raycast(new Ray(transform.position, transform.forward), out RaycastHit uiHit, distanceGrabRange, ~0, QueryTriggerInteraction.Collide))
+        else if (Physics.Raycast(transform.position, transform.forward, out RaycastHit uiHit, distanceGrabRange, ~0, QueryTriggerInteraction.Collide))
         {
-            if (uiHit.collider.GetComponentInParent<VRExhibitPanelUI>() != null || uiHit.collider.GetComponentInParent<UnityEngine.UI.Button>() != null)
+            var panelUI = uiHit.collider.GetComponentInParent<VRExhibitPanelUI>();
+            var btn = uiHit.collider.GetComponentInParent<UnityEngine.UI.Button>();
+            if (panelUI != null || btn != null)
             {
                 grabLaser.enabled = true;
                 grabLaser.SetPosition(0, transform.position);
