@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 497c1470319f9304a83a02020aaa9e30, type: 3}
+  m_Name: MammothStory
+  m_EditorClassIdentifier: Assembly-CSharp::ExhibitStory
+  animalName: Woolly Mammoth
+  scientificName: Mammuthus primigenius
+  status: EXTINCT
+  pages:
+  - body: The Woolly Mammoth was a massive, shaggy relative of modern elephants, adapted to the freezing temperatures of the last Ice Age. Covered in dense brown fur and a thick layer of fat, it possessed curved tusks up to 4 metres long used for scraping snow off grass and competing with rivals.
+  - body: As the Ice Age ended around 10,000 years ago, the mammoth's grassland habitat shrank rapidly, replaced by forests and tundra it could not survive in. At the same time, expanding human populations hunted mammoths for meat, bones, and ivory. The combination of climate change and hunting proved fatal.
+  - body: The mammoth's loss demonstrates how quickly climate shifts can destabilise a species, especially when compounded by human pressure. Isolated populations survived on Wrangel Island until just 4,000 years ago, showing that with habitat protection, extinction might have been prevented.

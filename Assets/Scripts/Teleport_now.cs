@@ -101,7 +101,7 @@ public class Teleport_now : MonoBehaviour
         }
 
         // Setup diagnostics to scan scene colliders on start
-        var colliders = FindObjectsByType<Collider>(FindObjectsSortMode.None);
+        var colliders = FindObjectsByType<Collider>(FindObjectsInactive.Exclude);
         Debug.Log($"[Teleport Setup Diagnostic] Scanning scene... Found {colliders.Length} total colliders.");
         foreach (var col in colliders)
         {

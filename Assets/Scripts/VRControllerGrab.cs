@@ -159,7 +159,7 @@ public class VRControllerGrab : MonoBehaviour
                 {
                     Ray ray = new Ray(cam.transform.position, cam.transform.forward);
                     RaycastHit camHit;
-                    if (Physics.Raycast(ray, out camHit, distanceGrabRange))
+                    if (Physics.Raycast(ray, out camHit, distanceGrabRange, ~0, QueryTriggerInteraction.Collide))
                     {
                         target = GetGrabbableFromCollider(camHit.collider);
                     }
@@ -242,15 +242,30 @@ public class VRControllerGrab : MonoBehaviour
         var device = InputDevices.GetDeviceAtXRNode(controllerNode);
         if (device.isValid)
         {
-            // Try analog grip value first
-            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue))
+            // Check Index Finger Trigger button (analog or binary)
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out float triggerValue) && triggerValue > grabThreshold)
             {
-                return gripValue > grabThreshold;
+                return true;
             }
-            // Fallback to binary grip button
-            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool gripPressed))
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool triggerPressed) && triggerPressed)
             {
-                return gripPressed;
+                return true;
+            }
+
+            // Check Side Grip button (analog or binary)
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.grip, out float gripValue) && gripValue > grabThreshold)
+            {
+                return true;
+            }
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.gripButton, out bool gripPressed) && gripPressed)
+            {
+                return true;
+            }
+
+            // Check Primary Action button
+            if (device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.primaryButton, out bool primaryPressed) && primaryPressed)
+            {
+                return true;
             }
         }
         return false;
@@ -464,10 +479,7 @@ public class VRControllerGrab : MonoBehaviour
         VRGrabbable grabbable = col.GetComponent<VRGrabbable>();
         if (grabbable != null) return grabbable;
 
-        // O(1) performance bypass for static geometry
-        if (col.attachedRigidbody == null) return null;
-
-        // Fallback for compound objects
+        // Fallback for compound objects in hierarchy
         return col.GetComponentInParent<VRGrabbable>();
     }
 
@@ -586,6 +598,17 @@ public class VRControllerGrab : MonoBehaviour
             grabLaser.SetPosition(0, transform.position);
             grabLaser.SetPosition(1, hit.point);
         }
+        else if (Physics.Raycast(new Ray(transform.position, transform.forward), out RaycastHit uiHit, distanceGrabRange))
+        {
+            if (uiHit.collider.GetComponentInParent<VRExhibitPanelUI>() != null)
+            {
+                grabLaser.enabled = true;
+                grabLaser.SetPosition(0, transform.position);
+                grabLaser.SetPosition(1, uiHit.point);
+                return;
+            }
+            grabLaser.enabled = false;
+        }
         else
         {
             grabLaser.enabled = false;
@@ -608,6 +631,28 @@ public class VRControllerGrab : MonoBehaviour
 
             StartDistanceGrab(grabbable);
         }
+        else
+        {
+            // Check if raycast hits an exhibit UI panel for page navigation
+            Ray ray = new Ray(transform.position, transform.forward);
+            if (Physics.Raycast(ray, out RaycastHit uiHit, distanceGrabRange))
+            {
+                var panelUI = uiHit.collider.GetComponentInParent<VRExhibitPanelUI>();
+                if (panelUI != null)
+                {
+                    Vector3 localHitPoint = panelUI.transform.InverseTransformPoint(uiHit.point);
+                    if (localHitPoint.x < -0.1f)
+                    {
+                        panelUI.OnBackClicked();
+                    }
+                    else
+                    {
+                        panelUI.OnNextClicked();
+                    }
+                    TriggerHaptics(0.3f, 0.1f);
+                }
+            }
+        }
     }
 
     private void StartDistanceGrab(VRGrabbable grabbable)
@@ -629,7 +674,7 @@ public class VRControllerGrab : MonoBehaviour
         heldObject.Grab(this);
 
         // Override to kinematic during flight so manual lerp is smooth and doesn't fight physics
-        if (heldObject.Rigidbody != null)
+        if (heldObject != null && heldObject.Rigidbody != null)
         {
             heldObject.Rigidbody.isKinematic = true;
             heldObject.Rigidbody.useGravity = false;
