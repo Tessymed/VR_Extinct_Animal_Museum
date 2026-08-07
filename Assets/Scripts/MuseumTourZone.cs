@@ -52,13 +52,13 @@ public class MuseumTourZone : MonoBehaviour
     {
         if (col == null) return false;
 
-        // Check for Camera, XR Origin, or Character controller tags
+        // Check if collider belongs to Camera or XR Origin root directly
         if (col.CompareTag("MainCamera") || col.CompareTag("Player"))
         {
             return true;
         }
 
-        if (col.GetComponentInParent<Unity.XR.CoreUtils.XROrigin>() != null || col.GetComponentInParent<Camera>() != null)
+        if (XRPlayerCache.Origin != null && (col.transform == XRPlayerCache.Origin.transform || col.transform.IsChildOf(XRPlayerCache.Origin.transform)))
         {
             return true;
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
@@ -138,26 +138,7 @@ public class VRPerformanceDetector : MonoBehaviour
             return $"Heavy Memory Allocation ({memDeltaBytes / 1024} KB in single frame)";
         }
 
-        // Check active audio sources
-        var audioSources = FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-        int playingCount = 0;
-        foreach (var src in audioSources)
-        {
-            if (src != null && src.isPlaying) playingCount++;
-        }
-
-        if (playingCount > 4)
-        {
-            return $"High Audio Concurrency ({playingCount} AudioSources playing simultaneously)";
-        }
-
-        // Check physics / colliders load
-        if (Physics.queriesHitTriggers)
-        {
-            return $"Main Thread / GPU Hitch ({durationMs:F1}ms frame render time)";
-        }
-
-        return $"OpenXR Compositor / CPU Hitch ({durationMs:F1}ms)";
+        return $"Main Thread / GPU Hitch ({durationMs:F1}ms)";
     }
 
     private void OnGUI()

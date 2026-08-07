@@ -273,21 +273,7 @@ public class VRExhibitTrigger : MonoBehaviour
 
         if (autoResetOnLeave && hasBeenTriggered)
         {
-            Transform playerTransform = null;
-            var cam = Camera.main;
-            if (cam != null)
-            {
-                playerTransform = cam.transform;
-            }
-            else
-            {
-                var origin = FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
-                if (origin != null)
-                {
-                    playerTransform = origin.transform;
-                }
-            }
-
+            Transform playerTransform = XRPlayerCache.HeadTransform;
             if (playerTransform != null)
             {
                 float distance = Vector3.Distance(transform.position, playerTransform.position);
