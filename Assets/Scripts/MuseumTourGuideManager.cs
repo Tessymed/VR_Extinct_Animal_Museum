@@ -5,8 +5,8 @@ using UnityEngine;
 /// <summary>
 /// Controls the museum tour guide audio narration system.
 /// Features:
-/// - Plays clear guide narration directly in VR headset earpiece (2D AudioSource).
-/// - Prevents overlapping voiceovers.
+/// - Instant, hitch-free VR audio playback directly in the headset earpiece (2D AudioSource).
+/// - Waits until the VR tracking session is active and stable before starting narration.
 /// - Automatically ducks / silences guide voiceover when user engages with an animal exhibit crystal.
 /// - Remembers visited tour zones so walking back and forth does not repeat audio.
 /// </summary>
@@ -15,16 +15,16 @@ public class MuseumTourGuideManager : MonoBehaviour
     public static MuseumTourGuideManager Instance { get; private set; }
 
     [Header("Audio Settings")]
-    [Tooltip("The AudioSource used for museum guide voiceovers (automatically configured as 2D headset audio).")]
+    [Tooltip("The AudioSource used for museum guide voiceovers.")]
     public AudioSource guideAudioSource;
 
     [Range(0f, 1f)]
     public float narrationVolume = 0.9f;
 
     [Header("Startup Voiceover")]
-    [Tooltip("Optional welcome audio clip to play right when the experience starts.")]
+    [Tooltip("Welcome audio clip to play once VR tracking is stable.")]
     public AudioClip welcomeClip;
-    public float startDelay = 1.5f;
+    public float startDelay = 3.0f;
 
     // Track visited tour zones by unique ID
     private HashSet<string> visitedZones = new HashSet<string>();
@@ -64,13 +64,21 @@ public class MuseumTourGuideManager : MonoBehaviour
     {
         if (welcomeClip != null)
         {
-            StartCoroutine(PlayWelcomeWithDelay(startDelay));
+            StartCoroutine(PlayWelcomeWhenReady(startDelay));
         }
     }
 
-    private IEnumerator PlayWelcomeWithDelay(float delay)
+    private IEnumerator PlayWelcomeWhenReady(float delay)
     {
+        // Wait until VR frames are smoothly flowing
         yield return new WaitForSeconds(delay);
+
+        if (welcomeClip != null && !welcomeClip.isReadyToPlay)
+        {
+            welcomeClip.LoadAudioData();
+            yield return new WaitUntil(() => welcomeClip.isReadyToPlay);
+        }
+
         PlayGuideVoiceover(welcomeClip, "entrance_welcome");
     }
 
@@ -103,6 +111,12 @@ public class MuseumTourGuideManager : MonoBehaviour
     private IEnumerator PlayAudioSequence(AudioClip clip)
     {
         if (guideAudioSource == null) yield break;
+
+        if (!clip.isReadyToPlay)
+        {
+            clip.LoadAudioData();
+            yield return new WaitUntil(() => clip.isReadyToPlay);
+        }
 
         // Smoothly start new clip
         guideAudioSource.Stop();
