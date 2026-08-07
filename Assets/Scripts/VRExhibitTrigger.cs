@@ -136,6 +136,12 @@ public class VRExhibitTrigger : MonoBehaviour
         if (hasBeenTriggered) return;
         hasBeenTriggered = true;
 
+        // Stop any active museum docent voiceover so it doesn't clash with animal audio
+        if (MuseumTourGuideManager.Instance != null)
+        {
+            MuseumTourGuideManager.Instance.StopGuideVoiceover();
+        }
+
         Debug.Log($"[VRExhibitTrigger] Triggered exhibit for: {animalData.animalName}");
 
         // 1. Hide crystal object mesh & colliders immediately
