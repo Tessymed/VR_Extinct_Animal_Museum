@@ -7,20 +7,30 @@ using UnityEngine;
 /// </summary>
 public static class VRPerformanceSetup
 {
-    [MenuItem("Tools/Setup Real-Time VR Performance Detector")]
+    [InitializeOnLoadMethod]
+    private static void AutoInitOnLoad()
+    {
+        EditorApplication.delayCall += EnsureDetectorInScene;
+    }
+
+    [MenuItem("Tools/Setup Real-Time VR Performance Detector", false, 1)]
+    [MenuItem("Window/VR/Setup Real-Time Performance Detector", false, 1)]
     public static void SetupDetector()
     {
+        EnsureDetectorInScene();
+    }
+
+    public static void EnsureDetectorInScene()
+    {
+        if (Application.isPlaying) return;
+
         var existing = Object.FindAnyObjectByType<VRPerformanceDetector>();
         if (existing == null)
         {
             var go = new GameObject("VR_Performance_Detector");
             Undo.RegisterCreatedObjectUndo(go, "Create VR Performance Detector");
             existing = go.AddComponent<VRPerformanceDetector>();
-            Debug.Log("✅ [VRPerformanceSetup] VR Performance Detector added to scene. Save your scene!");
-        }
-        else
-        {
-            Debug.Log("ℹ️ [VRPerformanceSetup] VR Performance Detector already present in scene.");
+            Debug.Log("✅ [VRPerformanceDetector] Auto-added Real-Time VR Performance Detector to scene.");
         }
 
         existing.targetFramerate = 72f;

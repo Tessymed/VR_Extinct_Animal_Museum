@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
@@ -169,7 +169,15 @@ public class VRPerformanceDetector : MonoBehaviour
         GUI.skin.box.fontSize = 13;
         GUI.skin.label.fontSize = 13;
 
-        Color statusColor = (currentFps >= targetFramerate - 5) ? new Color(0.2f, 0.9f, 0.3f, 0.95f) : (currentFps >= 45 ? new Color(1f, 0.8f, 0.2f, 0.95f) : new Color(1f, 0.25f, 0.25f, 0.95f);
+        Color statusColor = new Color(0.2f, 0.9f, 0.3f, 0.95f);
+        if (currentFps < 45f)
+        {
+            statusColor = new Color(1f, 0.25f, 0.25f, 0.95f);
+        }
+        else if (currentFps < targetFramerate - 5f)
+        {
+            statusColor = new Color(1f, 0.8f, 0.2f, 0.95f);
+        }
 
         GUILayout.BeginArea(new Rect(15, 15, 340, 160), GUI.skin.box);
         GUILayout.Label($"<b>VR Real-Time Detector</b>", GetHeaderStyle());
