@@ -3,21 +3,13 @@ using UnityEngine.XR;
 using Unity.XR.CoreUtils;
 
 /// <summary>
-/// Bulletproof 6DoF Head Tracking & Floor Elevation Enforcer for Meta Quest.
-/// Solves:
-/// 1. 3DoF world-rotation lock (world dragging when head turns) by directly binding to XRNode.CenterEye.
-/// 2. Camera sinking into the ground by ensuring proper floor elevation and standing height.
+/// Natural Eye-Level 6DoF Head Tracking Enforcer for Meta Quest.
+/// Ensures perfect human eye-level height (just below midway between ceiling and ground)
+/// and full 6DoF head rotation without world-drag or ceiling/floor clipping.
 /// </summary>
 [DefaultExecutionOrder(-500)]
 public class VRCameraPoseEnforcer : MonoBehaviour
 {
-    [Header("Elevation Settings")]
-    [Tooltip("Target standing eye height in meters if Guardian floor is at zero.")]
-    public float targetStandingHeight = 1.65f;
-
-    [Tooltip("Minimum head elevation allowed to prevent sinking into the floor.")]
-    public float minFloorElevation = 1.2f;
-
     private Transform cameraOffsetTransform;
     private XROrigin xrOrigin;
     private InputDevice centerEyeDevice;
@@ -34,7 +26,19 @@ public class VRCameraPoseEnforcer : MonoBehaviour
             cameraOffsetTransform = transform.parent;
         }
 
-        // Register for early pre-render pose updates
+        // Keep CameraOffset at zero so Quest physical floor tracking provides natural eye height
+        if (cameraOffsetTransform != null)
+        {
+            cameraOffsetTransform.localPosition = Vector3.zero;
+        }
+
+        if (xrOrigin != null)
+        {
+            xrOrigin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
+            xrOrigin.CameraYOffset = 0f;
+        }
+
+        // Register for pre-render 6DoF pose updates
         Application.onBeforeRender += OnBeforeRenderPoseUpdate;
     }
 
@@ -45,25 +49,9 @@ public class VRCameraPoseEnforcer : MonoBehaviour
 
     private void Start()
     {
-        CalibrateOriginAndFloor();
-    }
-
-    private void CalibrateOriginAndFloor()
-    {
-        if (xrOrigin != null)
-        {
-            xrOrigin.RequestedTrackingOriginMode = XROrigin.TrackingOriginMode.Floor;
-        }
-
         if (cameraOffsetTransform != null)
         {
-            Vector3 offset = cameraOffsetTransform.localPosition;
-            // If floor height is at zero or sunk into ground, set to standing eye height
-            if (offset.y < 0.2f)
-            {
-                offset.y = targetStandingHeight;
-                cameraOffsetTransform.localPosition = offset;
-            }
+            cameraOffsetTransform.localPosition = Vector3.zero;
         }
     }
 
@@ -86,7 +74,7 @@ public class VRCameraPoseEnforcer : MonoBehaviour
 
         if (centerEyeDevice.isValid)
         {
-            // 1. Direct 6DoF Head Rotation (eliminates world-drag and rotation lock)
+            // 1. Direct 6DoF Head Rotation
             if (centerEyeDevice.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion headRotation))
             {
                 transform.localRotation = headRotation;
@@ -96,18 +84,20 @@ public class VRCameraPoseEnforcer : MonoBehaviour
                 transform.localRotation = centerRot;
             }
 
-            // 2. Direct 6DoF Head Position
+            // 2. Direct 6DoF Head Position (natural real-world physical standing height)
             if (centerEyeDevice.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 headPosition))
             {
-                transform.localPosition = headPosition;
-
-                // Check if head position is sunk into ground
-                if (cameraOffsetTransform != null && cameraOffsetTransform.localPosition.y < 0.2f && headPosition.y < minFloorElevation)
+                // If tracking reports uncalibrated flat zero, provide a natural 1.4m standing height
+                if (headPosition.y < 0.1f && cameraOffsetTransform != null)
                 {
-                    Vector3 offset = cameraOffsetTransform.localPosition;
-                    offset.y = targetStandingHeight;
-                    cameraOffsetTransform.localPosition = offset;
+                    cameraOffsetTransform.localPosition = new Vector3(0f, 1.4f, 0f);
                 }
+                else if (cameraOffsetTransform != null && cameraOffsetTransform.localPosition.y > 0.1f && headPosition.y >= 0.5f)
+                {
+                    cameraOffsetTransform.localPosition = Vector3.zero;
+                }
+
+                transform.localPosition = headPosition;
             }
             else if (centerEyeDevice.TryGetFeatureValue(CommonUsages.centerEyePosition, out Vector3 centerPos))
             {
