@@ -20,14 +20,15 @@
         android:extractNativeLibs="true"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
 
-        <!-- Supported Meta Quest Hardware Types -->
-        <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro|quest3" />
+        <!-- Supported Meta Quest Hardware Models -->
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro|quest3|quest3s" />
         <meta-data android:name="com.oculus.vr.focusaware" android:value="true" />
         <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only" />
         <meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="true" />
 
+        <!-- Unity 6 Main Game Activity -->
         <activity
-            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:name="com.unity3d.player.UnityPlayerGameActivity"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
             android:configChanges="density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|touchscreen"
             android:resizeableActivity="false"
@@ -38,7 +39,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <!-- Essential Meta Quest VR Intent for 3D Immersive Launch -->
+                <category android:name="android.intent.category.DEFAULT" />
+                <!-- 100% Native Meta Quest VR Intent for 3D Immersive Launch -->
                 <category android:name="com.oculus.intent.category.VR" />
             </intent-filter>
 
