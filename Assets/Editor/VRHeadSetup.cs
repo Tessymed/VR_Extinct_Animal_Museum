@@ -35,11 +35,8 @@ public static class VRHeadSetup
             if (enforcer == null)
             {
                 enforcer = Undo.AddComponent<VRCameraPoseEnforcer>(mainCam.gameObject);
-                Debug.Log("✅ [VRHeadSetup] Added VRCameraPoseEnforcer to Main Camera for 100% 6DoF head rotation & height.");
+                Debug.Log("✅ [VRHeadSetup] Added VRCameraPoseEnforcer to Main Camera for 100% 6DoF head rotation & natural eye level.");
             }
-
-            enforcer.targetStandingHeight = 1.65f;
-            enforcer.minFloorElevation = 1.2f;
             EditorUtility.SetDirty(mainCam.gameObject);
         }
     }

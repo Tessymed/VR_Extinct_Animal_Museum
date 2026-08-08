@@ -10,6 +10,13 @@ using Unity.XR.CoreUtils;
 [DefaultExecutionOrder(-500)]
 public class VRCameraPoseEnforcer : MonoBehaviour
 {
+    [Header("Elevation Configuration")]
+    [Tooltip("Target standing eye height in meters.")]
+    public float targetStandingHeight = 1.4f;
+
+    [Tooltip("Minimum floor elevation threshold.")]
+    public float minFloorElevation = 1.0f;
+
     private Transform cameraOffsetTransform;
     private XROrigin xrOrigin;
     private InputDevice centerEyeDevice;
@@ -90,7 +97,7 @@ public class VRCameraPoseEnforcer : MonoBehaviour
                 // If tracking reports uncalibrated flat zero, provide a natural 1.4m standing height
                 if (headPosition.y < 0.1f && cameraOffsetTransform != null)
                 {
-                    cameraOffsetTransform.localPosition = new Vector3(0f, 1.4f, 0f);
+                    cameraOffsetTransform.localPosition = new Vector3(0f, targetStandingHeight, 0f);
                 }
                 else if (cameraOffsetTransform != null && cameraOffsetTransform.localPosition.y > 0.1f && headPosition.y >= 0.5f)
                 {
