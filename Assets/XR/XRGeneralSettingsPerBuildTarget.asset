@@ -17,6 +17,23 @@ MonoBehaviour:
   m_AutomaticRunning: 1
   m_Loaders:
   - {fileID: 11400000, guid: 8da0bd8babbef054da52a8ce3e1cf7ea, type: 2}
+--- !u!114 &-1000000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4c3631f5e58749a59194e0cf6baf6d5, type: 3}
+  m_Name: Android Providers
+  m_EditorClassIdentifier: Unity.XR.Management::UnityEngine.XR.Management.XRManagerSettings
+  m_RequiresSettingsUpdate: 0
+  m_AutomaticLoading: 1
+  m_AutomaticRunning: 1
+  m_Loaders:
+  - {fileID: 11400000, guid: 8da0bd8babbef054da52a8ce3e1cf7ea, type: 2}
 --- !u!114 &-754713838271218435
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -45,9 +62,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2dc886499c26824283350fa532d087d, type: 3}
   m_Name: XRGeneralSettingsPerBuildTarget
   m_EditorClassIdentifier: Unity.XR.Management.Editor::UnityEditor.XR.Management.XRGeneralSettingsPerBuildTarget
-  Keys: 010000000d000000
+  Keys: 01000000070000000d000000
   Values:
   - {fileID: 3638158822742239117}
+  - {fileID: 2000000000000000001}
   - {fileID: 4246409267652025276}
 --- !u!114 &3638158822742239117
 MonoBehaviour:
@@ -62,6 +80,20 @@ MonoBehaviour:
   m_Name: Standalone Settings
   m_EditorClassIdentifier: Unity.XR.Management::UnityEngine.XR.Management.XRGeneralSettings
   m_LoaderManagerInstance: {fileID: -3405933320486761212}
+  m_InitManagerOnStart: 1
+--- !u!114 &2000000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d236b7d11115f2143951f1e14045df39, type: 3}
+  m_Name: Android Settings
+  m_EditorClassIdentifier: Unity.XR.Management::UnityEngine.XR.Management.XRGeneralSettings
+  m_LoaderManagerInstance: {fileID: -1000000000000000001}
   m_InitManagerOnStart: 1
 --- !u!114 &4246409267652025276
 MonoBehaviour:

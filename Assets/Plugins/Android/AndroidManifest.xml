@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.DefaultCompany.VR_Extinct_Animal_Museum"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Meta Quest 6DoF Head Tracking and VR Capabilities -->
+    <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true" />
+    <uses-feature android:name="oculus.software.handtracking" android:required="false" />
+    
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/app_icon"
+        android:extractNativeLibs="true"
+        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+
+        <!-- Forces Meta Quest Horizon OS to launch directly into 3D Immersive VR Mode -->
+        <meta-data android:name="com.oculus.vr.focusaware" android:value="true" />
+        <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only" />
+        <meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="true" />
+
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:configChanges="density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|touchscreen"
+            android:resizeableActivity="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <!-- 100% Native Meta Quest VR Intent (eliminates 2D virtual window) -->
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+
+            <meta-data android:name="unityplayer.UnityFileProvider" android:value="true" />
+        </activity>
+    </application>
+</manifest>
